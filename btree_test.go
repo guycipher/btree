@@ -131,3 +131,65 @@ func TestGetPageLock(t *testing.T) {
 	mu.Unlock()
 
 }
+
+func TestGetPage(t *testing.T) {
+	defer os.Remove("test.db")
+	bt, err := Open("test.db", 777, 3)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	defer bt.Close()
+
+	// Create new page
+	pgN, err := bt.newPageNumber()
+	if err != nil {
+		t.Error(err)
+		return
+
+	}
+
+	// Write page
+	n := &Node{
+		Page: pgN,
+	}
+
+	_, err = bt.writePage(n)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	_, err = bt.getPage(0)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Create new page
+	pgN, err = bt.newPageNumber()
+	if err != nil {
+		t.Error(err)
+		return
+
+	}
+
+	// Write page
+	n = &Node{
+		Page: pgN,
+	}
+
+	_, err = bt.writePage(n)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	_, err = bt.getPage(1)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+}
