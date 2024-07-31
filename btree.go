@@ -87,7 +87,26 @@ func (b *BTree) Close() error {
 	return b.File.Close()
 }
 
+// Put inserts a key into the BTree
+// A key can have multiple values
 func (b *BTree) Put(key interface{}, value interface{}) error {
 
 	return nil
+}
+
+// Delete deletes a key and its values from the BTree
+func (b *BTree) Delete(k interface{}) error {
+
+	return nil
+}
+
+// DeleteValueFromKey deletes a value from a key
+func (b *BTree) DeleteValueFromKey(key interface{}, value interface{}) error {
+
+}
+
+// Get gets the values of a key
+func (b *BTree) Get(k interface{}) ([]interface{}, error) {
+
+	return nil, nil
 }
