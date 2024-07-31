@@ -15,3 +15,32 @@
 // You should have received a copy of the GNU General Public License along with
 // this program.  If not, see <http://www.gnu.org/licenses/>.
 package btree
+
+import "testing"
+
+// Test open, duh!
+// We are testing Close as well no point to write another test for that specifically
+func TestOpen(t *testing.T) {
+	bt, err := Open("test.db", 777, 3)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if bt == nil {
+		t.Error("expected bt to not be nil")
+		return
+	}
+
+	if bt.File == nil {
+		t.Error("expected bt.File to not be nil")
+		return
+	}
+
+	err = bt.Close()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+}
