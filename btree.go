@@ -20,6 +20,8 @@ import (
 	"bytes"
 	"encoding/gob"
 	"errors"
+	"fmt"
+	"io"
 	"os"
 	"sync"
 )
@@ -152,4 +154,49 @@ func decodeNode(data []byte) (*Node, error) {
 	}
 
 	return n, nil
+}
+
+// getPageLock returns the lock for a page
+func (b *BTree) getPageLock(pageno int64) *sync.RWMutex {
+	// Used for page level locking
+	// This is decent for concurrent reads and writes
+
+	if lock, ok := b.PageLocks[pageno]; ok {
+		return lock
+	} else {
+		// Create a new lock
+		b.PageLocks[pageno] = &sync.RWMutex{}
+
+		return b.PageLocks[pageno]
+	}
+
+	return nil
+}
+
+// Get page from file.
+// Decodes and returns node
+func (b *BTree) getPage(pageno int64) (*Node, error) {
+
+	// Read the page from the file
+	page := make([]byte, PAGE_SIZE)
+	if pageno == 0 { // if pageno is 0, read from the start of the file
+
+		_, err := b.File.ReadAt(page, io.SeekStart)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read page %d: %w", pageno, err)
+		}
+	} else {
+		_, err := b.File.ReadAt(page, pageno*PAGE_SIZE)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read page %d: %w", pageno, err)
+		}
+	}
+
+	// Unmarshal the page into a node
+	node, err := decodeNode(page)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode page %d: %w", pageno, err)
+	}
+
+	return node, nil
 }
