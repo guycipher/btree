@@ -109,3 +109,25 @@ func TestDecodeNode(t *testing.T) {
 	}
 
 }
+
+func TestGetPageLock(t *testing.T) {
+	defer os.Remove("test.db")
+	bt, err := Open("test.db", 777, 3)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	defer bt.Close()
+
+	mu := bt.getPageLock(1)
+
+	if mu == nil {
+		t.Error("expected mu to not be nil")
+		return
+	}
+
+	mu.Lock()
+	mu.Unlock()
+
+}

@@ -158,6 +158,7 @@ func decodeNode(data []byte) (*Node, error) {
 }
 
 // getPageLock returns the lock for a page
+// If the lock does not exist, it creates a new lock
 func (b *BTree) getPageLock(pageno int64) *sync.RWMutex {
 	// Used for page level locking
 	// This is decent for concurrent reads and writes
