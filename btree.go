@@ -116,15 +116,17 @@ func (b *BTree) Get(k interface{}) ([]interface{}, error) {
 // encodeNode encodes a node into a byte slice
 // The byte slice is padded with zeros to PAGE_SIZE
 func encodeNode(n *Node) ([]byte, error) {
-	buff := bytes.NewBuffer([]byte{})
+	buff := bytes.NewBuffer([]byte{}) // Create a new buffer to store the encoded node
 
-	enc := gob.NewEncoder(buff)
-	err := enc.Encode(n)
+	enc := gob.NewEncoder(buff) // Create a new encoder passing the buffer
+	err := enc.Encode(n)        // Encode the node
 	if err != nil {
 		return nil, err
 	}
 
+	// Check if the node is too large to encode
 	if len(buff.Bytes()) > PAGE_SIZE {
+		// **** This can occur if you set a T too large with a small PAGE_SIZE
 		return nil, errors.New("node too large to encode")
 	}
 
@@ -139,11 +141,11 @@ func encodeNode(n *Node) ([]byte, error) {
 
 // decodeNode decodes a byte slice into a node
 func decodeNode(data []byte) (*Node, error) {
-	n := &Node{}
+	n := &Node{} // Create a new node which will be decoded into
 
-	dec := gob.NewDecoder(bytes.NewBuffer(data))
+	dec := gob.NewDecoder(bytes.NewBuffer(data)) // Create a new decoder passing the data
 
-	err := dec.Decode(n)
+	err := dec.Decode(n) // Decode the data into the node
 	if err != nil {
 		return nil, err
 
