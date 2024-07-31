@@ -107,6 +107,7 @@ func (b *BTree) Delete(k interface{}) error {
 // DeleteValueFromKey deletes a value from a key
 func (b *BTree) DeleteValueFromKey(key interface{}, value interface{}) error {
 
+	return nil
 }
 
 // Get gets the values of a key
@@ -199,4 +200,38 @@ func (b *BTree) getPage(pageno int64) (*Node, error) {
 	}
 
 	return node, nil
+}
+
+// newPageNumber returns the next page number
+// to be used before writing a new page
+func (b *BTree) newPageNumber() (int64, error) {
+	fileInfo, err := b.File.Stat()
+	if err != nil {
+		return 0, err
+	}
+	return fileInfo.Size() / PAGE_SIZE, nil
+}
+
+// writePage encodes a node and writes it to the tree file at node page
+func (b *BTree) writePage(n *Node) (int64, error) {
+
+	buff, err := encodeNode(n)
+	if err != nil {
+		return 0, err
+	}
+
+	if n.Page == 0 {
+		_, err = b.File.WriteAt(buff, io.SeekStart)
+		if err != nil {
+			return 0, err
+		}
+	} else {
+
+		_, err = b.File.WriteAt(buff, n.Page*PAGE_SIZE)
+		if err != nil {
+			return 0, err
+		}
+	}
+	return n.Page, nil
+
 }

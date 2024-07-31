@@ -44,3 +44,65 @@ func TestOpen(t *testing.T) {
 	}
 
 }
+
+func TestEncodeNode(t *testing.T) {
+
+	n := &Node{
+		Page: 1,
+	}
+
+	_, err := encodeNode(n)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// make a large node exceeding PAGE_SIZE
+	n = &Node{
+		Page: 1,
+		Keys: make([]*Key, 0),
+	}
+
+	for i := 0; i < 1000; i++ {
+		n.Keys = append(n.Keys, &Key{
+			K: i,
+			V: []interface{}{i},
+		})
+	}
+
+	_, err = encodeNode(n)
+	if err == nil {
+		t.Error("expected error")
+		return
+	}
+
+	if err.Error() != "node too large to encode" {
+		t.Error("unexpected error: " + err.Error())
+		return
+	}
+
+}
+
+func TestDecodeNode(t *testing.T) {
+	n := &Node{
+		Page: 1,
+	}
+
+	b, err := encodeNode(n)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	nn, err := decodeNode(b)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if nn.Page != n.Page {
+		t.Error("expected page to be equal")
+		return
+	}
+
+}
