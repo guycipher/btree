@@ -16,11 +16,15 @@
 // this program.  If not, see <http://www.gnu.org/licenses/>.
 package btree
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 // Test open, duh!
 // We are testing Close as well no point to write another test for that specifically
 func TestOpen(t *testing.T) {
+	defer os.Remove("test.db")
 	bt, err := Open("test.db", 777, 3)
 	if err != nil {
 		t.Error(err)
@@ -46,7 +50,6 @@ func TestOpen(t *testing.T) {
 }
 
 func TestEncodeNode(t *testing.T) {
-
 	n := &Node{
 		Page: 1,
 	}
