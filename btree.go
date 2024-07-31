@@ -17,6 +17,8 @@
 package btree
 
 import (
+	"bytes"
+	"encoding/gob"
 	"errors"
 	"os"
 	"sync"
@@ -109,4 +111,43 @@ func (b *BTree) DeleteValueFromKey(key interface{}, value interface{}) error {
 func (b *BTree) Get(k interface{}) ([]interface{}, error) {
 
 	return nil, nil
+}
+
+// encodeNode encodes a node into a byte slice
+// The byte slice is padded with zeros to PAGE_SIZE
+func encodeNode(n *Node) ([]byte, error) {
+	buff := bytes.NewBuffer([]byte{})
+
+	enc := gob.NewEncoder(buff)
+	err := enc.Encode(n)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(buff.Bytes()) > PAGE_SIZE {
+		return nil, errors.New("node too large to encode")
+	}
+
+	// Fill the rest of the page with zeros
+	for i := len(buff.Bytes()); i < PAGE_SIZE; i++ {
+		buff.WriteByte(0)
+	}
+
+	return buff.Bytes(), nil
+
+}
+
+// decodeNode decodes a byte slice into a node
+func decodeNode(data []byte) (*Node, error) {
+	n := &Node{}
+
+	dec := gob.NewDecoder(bytes.NewBuffer(data))
+
+	err := dec.Decode(n)
+	if err != nil {
+		return nil, err
+
+	}
+
+	return n, nil
 }
