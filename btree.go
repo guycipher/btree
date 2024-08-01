@@ -38,7 +38,7 @@ type BTree struct {
 
 // Key is the key struct for the BTree
 type Key struct {
-	K            interface{}   // Key can be of uint, int, uint64, float64, string, or []byte
+	K            interface{}
 	V            []interface{} // key can have multiple values
 	Overflowed   bool          // If the key has overflowed, it will be stored in the overflow page
 	OverflowPage int64         // the page where we can find the overflowed values. An overflow node has 1 key, no children and a list of values tied to the key. The overflow node [0] key can also be overflowed
@@ -52,6 +52,13 @@ type Node struct {
 	Leaf     bool    // If the node is a leaf node
 	Overflow bool    // If the node is an overflow node
 	Reuse    bool    // If node will be reused
+}
+
+type Iterator struct {
+	node     *Node
+	keyIndex int
+	valIndex int
+	btree    *BTree
 }
 
 // Open opens a new or existing BTree
@@ -84,6 +91,20 @@ func Open(name string, perm int, t int) (*BTree, error) {
 		T:         t,
 		TreeLock:  &sync.RWMutex{},
 	}, nil
+}
+
+func (b *BTree) NewIteratorFromKey(key interface{}) (*Iterator, error) {
+	root, err := b.getRoot()
+	if err != nil {
+		return nil, err
+	}
+
+	node, keyIndex, err := b.findNodeForKey(root, key)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Iterator{node: node, keyIndex: keyIndex, valIndex: 0, btree: b}, nil
 }
 
 // Close closes the BTree
@@ -332,6 +353,7 @@ func (b *BTree) insertNonFull(x *Node, key interface{}, value interface{}) error
 
 		// If key exists, append the value
 		if i >= 0 && equal(key, x.Keys[i].K) {
+
 			x.Keys[i].V = append(x.Keys[i].V, value)
 
 			// check if the key has overflowed
@@ -342,6 +364,8 @@ func (b *BTree) insertNonFull(x *Node, key interface{}, value interface{}) error
 				if err != nil {
 					return err
 				}
+
+				return nil
 
 			}
 		} else {
@@ -361,6 +385,7 @@ func (b *BTree) insertNonFull(x *Node, key interface{}, value interface{}) error
 		if err != nil {
 			return err
 		}
+
 	} else {
 		for i >= 0 && lessThan(key, x.Keys[i].K) {
 			i--
@@ -397,22 +422,71 @@ func (b *BTree) insertNonFull(x *Node, key interface{}, value interface{}) error
 	return nil
 }
 
-// Delete deletes a key and its values from the BTree
-func (b *BTree) Delete(k interface{}) error {
-
-	return nil
-}
-
-// DeleteValueFromKey deletes a value from a key
-func (b *BTree) DeleteValueFromKey(key interface{}, value interface{}) error {
-
-	return nil
-}
-
-// Get gets the values of a key
+// Get returns the values associated with a key
 func (b *BTree) Get(k interface{}) ([]interface{}, error) {
+	root, err := b.getRoot()
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, nil
+	return b.searchKey(k, root)
+}
+
+// searchKey searches for a key in the BTree
+func (b *BTree) searchKey(k interface{}, x *Node) ([]interface{}, error) {
+
+	if x != nil {
+
+		nodeLock := b.getPageLock(x.Page)
+		nodeLock.RLock()
+		defer nodeLock.RUnlock()
+		i := 0
+		for i < len(x.Keys) && lessThan(x.Keys[i].K, k) {
+			i++
+		}
+		if i < len(x.Keys) && equal(k, x.Keys[i].K) {
+
+			var values []interface{}
+			values = append(values, x.Keys[i].V...)
+
+			// Check if the key has overflowed
+			if x.Keys[i].Overflowed {
+				overflowPage, err := b.getPage(x.Keys[i].OverflowPage)
+				if err != nil {
+					return nil, err
+				}
+
+				// Append the values from the overflow page
+				values = append(values, overflowPage.Keys[0].V...)
+
+				// Check if the overflow page has overflowed and repeat the process
+				for overflowPage.Keys[0].Overflowed {
+					overflowPage, err = b.getPage(overflowPage.Keys[0].OverflowPage)
+					if err != nil {
+						return nil, err
+					}
+					values = append(values, overflowPage.Keys[0].V...)
+				}
+			}
+
+			return values, nil
+		} else if x.Leaf {
+			return nil, nil
+		} else {
+			child, err := b.getPage(x.Children[i])
+			if err != nil {
+				return nil, err
+			}
+			return b.searchKey(k, child)
+		}
+	} else {
+		root, err := b.getRoot()
+		if err != nil {
+			return nil, err
+		}
+
+		return b.searchKey(k, root)
+	}
 }
 
 // handleKeyOverflow handles the overflow of a key
@@ -745,6 +819,7 @@ func equal(a, b interface{}) bool {
 	switch a := a.(type) {
 	case int:
 		if b, ok := b.(int); ok {
+
 			return a == b
 		}
 	case int8:
@@ -1108,4 +1183,551 @@ func (b *BTree) getAvailableOverflowNode() (*Node, error) {
 func (b *BTree) pageCount() int64 {
 	stat, _ := b.File.Stat()
 	return stat.Size() / PAGE_SIZE
+}
+
+// Delete deletes a key from the BTree
+func (b *BTree) Delete(k interface{}) error {
+	// when we delete we remove all page locks and recreate after delete
+
+	// lock tree
+	b.TreeLock.Lock()
+	defer b.TreeLock.Unlock()
+
+	// remove all page locks
+	b.PageLocks = make(map[int64]*sync.RWMutex)
+
+	root, err := b.getRoot()
+	if err != nil {
+		return err
+	}
+
+	_, err = b.deleteKey(k, root)
+	if err != nil {
+		return err
+	}
+
+	// recreate page locks
+	stat, err := b.File.Stat()
+	if err != nil {
+		return err
+	}
+
+	for i := int64(0); i < stat.Size(); i += PAGE_SIZE {
+		b.getPageLock(i)
+
+	}
+
+	return nil
+}
+
+// deleteKey deletes a key from the BTree
+func (b *BTree) deleteKey(k interface{}, x *Node) (*Node, error) {
+	i := 0
+	for i < len(x.Keys) && lessThan(x.Keys[i].K, k) {
+		i++
+	}
+
+	if i < len(x.Keys) && equal(k, x.Keys[i].K) {
+
+		overflows, err := b.getAllOverflowPages(x.Keys[i])
+		if err != nil {
+			return nil, err
+		}
+
+		for _, overflow := range overflows {
+			// make the overflow page reusable
+			overflowPage, err := b.getPage(overflow)
+			if err != nil {
+				return nil, err
+			}
+
+			overflowPage.Reuse = true
+			_, err = b.writePage(overflowPage)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		if x.Leaf {
+
+			x.Keys = append(x.Keys[:i], x.Keys[i+1:]...)
+			_, err := b.writePage(x)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			y, err := b.getPage(x.Children[i])
+			if err != nil {
+				return nil, err
+			}
+			z, err := b.getPage(x.Children[i+1])
+			if err != nil {
+				return nil, err
+			}
+			if len(y.Keys) >= b.T {
+				predKey, err := b.getPredecessor(y)
+				if err != nil {
+					return nil, err
+				}
+				x.Keys[i] = predKey
+				_, err = b.deleteKey(predKey, y)
+				if err != nil {
+					return nil, err
+				}
+			} else if len(z.Keys) >= b.T {
+				succKey, err := b.getSuccessor(z)
+				if err != nil {
+					return nil, err
+				}
+				x.Keys[i] = succKey
+				_, err = b.deleteKey(succKey, z)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				y.Keys = append(y.Keys, x.Keys[i])
+				y.Keys = append(y.Keys, z.Keys...)
+				y.Children = append(y.Children, z.Children...)
+				x.Keys = append(x.Keys[:i], x.Keys[i+1:]...)
+				x.Children = append(x.Children[:i+1], x.Children[i+2:]...)
+				err = b.deletePageAndUpdate(z.Page, PAGE_SIZE)
+				if err != nil {
+					return nil, err
+				}
+				_, err = b.deleteKey(k, y)
+				if err != nil {
+					return nil, err
+				}
+			}
+			_, err = b.writePage(x)
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else if !x.Leaf {
+		child, err := b.getPage(x.Children[i])
+		if err != nil {
+			return nil, err
+		}
+		_, err = b.deleteKey(k, child)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return x, nil
+}
+
+// deletePage deletes a page from the file
+func (b *BTree) deletePage(offset int64, length int64) error {
+	// Determine the size of chunks to read and write
+	chunkSize := int64(PAGE_SIZE)
+
+	// Calculate the new size of the file
+	stat, err := b.File.Stat()
+	if err != nil {
+		return err
+	}
+	newSize := stat.Size() - length
+
+	// Loop over the file
+	for i := offset + length; i < newSize; {
+		// Calculate the size of the current chunk
+		currentChunkSize := chunkSize
+		if i+chunkSize > newSize {
+			currentChunkSize = newSize - i
+		}
+
+		// Read the chunk
+		chunk := make([]byte, currentChunkSize)
+		_, err = b.File.ReadAt(chunk, i)
+		if err != nil {
+			return err
+		}
+
+		// Write the chunk
+		_, err = b.File.WriteAt(chunk, i-length)
+		if err != nil {
+			return err
+		}
+
+		// Move to the next chunk
+		i += currentChunkSize
+	}
+
+	// Truncate the file to the new size
+	err = b.File.Truncate(newSize)
+	if err != nil {
+		return err
+	}
+
+	// remove page from page locks map
+	delete(b.PageLocks, offset/PAGE_SIZE)
+
+	return nil
+}
+
+// updatePageNumbers updates the page numbers of all nodes that come after the deleted page
+func (b *BTree) updatePageNumbers(x *Node, deletedPage int64) error {
+	// If the node's page number is greater than the deleted page's number, decrement it
+	if x.Page > deletedPage {
+		x.Page--
+		_, err := b.writePage(x)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Recursively update the children
+	for _, childPage := range x.Children {
+		child, err := b.getPage(childPage)
+		if err != nil {
+			return err
+		}
+		err = b.updatePageNumbers(child, deletedPage)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// deletePageAndUpdate deletes a page and updates the page numbers of all nodes that come after the deleted page
+func (b *BTree) deletePageAndUpdate(offset int64, length int64) error {
+	// Delete the page
+	err := b.deletePage(offset, length)
+	if err != nil {
+		return err
+	}
+
+	// Get the root of the BTree
+	root, err := b.getRoot()
+	if err != nil {
+		return err
+	}
+
+	// Update the page numbers of all nodes that come after the deleted page
+	err = b.updatePageNumbers(root, offset)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// getAllOverflowPages returns all overflow pages for a key
+func (b *BTree) getAllOverflowPages(key *Key) ([]int64, error) {
+	var overflowPages []int64
+
+	// Check if the key has overflowed
+	if key.Overflowed {
+		overflowPages = append(overflowPages, key.OverflowPage)
+
+		// Read the overflow page
+		overflowPage, err := b.getPage(key.OverflowPage)
+		if err != nil {
+			return nil, err
+		}
+
+		// Check if the key in the overflow page has overflowed
+		if overflowPage.Keys[0].Overflowed {
+			additionalOverflowPages, err := b.getAllOverflowPages(overflowPage.Keys[0])
+			if err != nil {
+				return nil, err
+			}
+			overflowPages = append(overflowPages, additionalOverflowPages...)
+		}
+	}
+
+	return overflowPages, nil
+}
+
+// getPredecessor gets the maximum key in the sub-tree rooted at x
+func (b *BTree) getPredecessor(x *Node) (*Key, error) {
+	// If x is a leaf node, the maximum key is the last key in x.Keys
+	if x.Leaf {
+		return x.Keys[len(x.Keys)-1], nil
+	}
+
+	// If x is an internal node, the maximum key is the maximum key in the last child of x
+	child, err := b.getPage(x.Children[len(x.Children)-1])
+	if err != nil {
+		return nil, err
+	}
+	return b.getPredecessor(child)
+}
+
+// getSuccessor gets the minimum key in the sub-tree rooted at x
+func (b *BTree) getSuccessor(x *Node) (*Key, error) {
+	// If x is a leaf node, the minimum key is the first key in x.Keys
+	if x.Leaf {
+		return x.Keys[0], nil
+	}
+
+	// If x is an internal node, the minimum key is the minimum key in the first child of x
+	child, err := b.getPage(x.Children[0])
+	if err != nil {
+		return nil, err
+	}
+	return b.getSuccessor(child)
+}
+
+func (b *BTree) GetKeyOverflow(key interface{}) ([]interface{}, error) {
+	root, err := b.getRoot()
+	if err != nil {
+		return nil, err
+	}
+
+	return b.searchKeyOverflow(key, root)
+}
+
+func (b *BTree) searchKeyOverflow(k interface{}, x *Node) ([]interface{}, error) {
+	if x != nil {
+		nodeLock := b.getPageLock(x.Page)
+		nodeLock.RLock()
+		defer nodeLock.RUnlock()
+
+		i := 0
+		for i < len(x.Keys) && lessThan(x.Keys[i].K, k) {
+			i++
+		}
+		if i < len(x.Keys) && equal(k, x.Keys[i].K) {
+			var values []interface{}
+			values = append(values, x.Keys[i].V...)
+
+			if x.Keys[i].Overflowed {
+				overflowPage, err := b.getPage(x.Keys[i].OverflowPage)
+				if err != nil {
+					return nil, err
+				}
+
+				values = append(values, overflowPage.Keys[0].V...)
+
+				for overflowPage.Keys[0].Overflowed {
+					overflowPage, err = b.getPage(overflowPage.Keys[0].OverflowPage)
+					if err != nil {
+						return nil, err
+					}
+					values = append(values, overflowPage.Keys[0].V...)
+				}
+			}
+
+			return values, nil
+		} else if x.Leaf {
+			return nil, nil
+		} else {
+			child, err := b.getPage(x.Children[i])
+			if err != nil {
+				return nil, err
+			}
+			return b.searchKeyOverflow(k, child)
+		}
+	} else {
+		root, err := b.getRoot()
+		if err != nil {
+			return nil, err
+		}
+
+		return b.searchKeyOverflow(k, root)
+	}
+}
+
+func (b *BTree) findNodeForKey(x *Node, key interface{}) (*Node, int, error) {
+	i := 0
+	for i < len(x.Keys) && lessThan(x.Keys[i].K, key) {
+		i++
+	}
+
+	if i < len(x.Keys) && equal(key, x.Keys[i].K) {
+		return x, i, nil
+	} else if !x.Leaf {
+		child, err := b.getPage(x.Children[i])
+		if err != nil {
+			return nil, 0, err
+		}
+
+		return b.findNodeForKey(child, key)
+	}
+
+	return nil, 0, errors.New("key not found")
+}
+
+func (it *Iterator) Next() (interface{}, error) {
+	if it.node == nil {
+		return nil, errors.New("iterator has no more items")
+	}
+
+	// If the iterator has reached the end of the values for a key
+	if it.valIndex >= len(it.node.Keys[it.keyIndex].V) {
+		// If the key has overflowed, retrieve the overflow page and continue iterating over the values
+		if it.node.Keys[it.keyIndex].Overflowed {
+			overflowNode, err := it.btree.getPage(it.node.Keys[it.keyIndex].OverflowPage)
+			if err != nil {
+				return nil, err
+			}
+			it.node = overflowNode
+			it.keyIndex = 0
+			it.valIndex = 0
+		} else {
+			// If the key has not overflowed, move to the next key
+			it.keyIndex++
+			it.valIndex = 0
+		}
+	}
+
+	// If the iterator has reached the end of the keys for a node
+	if it.keyIndex >= len(it.node.Keys) {
+		if it.node.Leaf {
+			it.node = nil
+			return nil, errors.New("iterator has no more items")
+		}
+		var err error
+		it.node, err = it.btree.getPage(it.node.Children[it.keyIndex])
+		if err != nil {
+			return nil, err
+		}
+		it.keyIndex = 0
+	}
+
+	//key := it.node.Keys[it.keyIndex].K
+	value := it.node.Keys[it.keyIndex].V[it.valIndex]
+	it.valIndex++
+
+	return value, nil
+}
+
+// Range returns all keys in the BTree that are within the range [start, end]
+func (b *BTree) Range(start, end interface{}) ([]interface{}, error) {
+	root, err := b.getRoot()
+	if err != nil {
+		return nil, err
+	}
+
+	return b.rangeKeys(start, end, root)
+}
+
+// rangeKeys returns all keys in the BTree that are within the range [start, end]
+func (b *BTree) rangeKeys(start, end interface{}, x *Node) ([]interface{}, error) {
+	keys := make([]interface{}, 0)
+	if x != nil {
+		nodeLock := b.getPageLock(x.Page)
+		nodeLock.RLock()
+		defer nodeLock.RUnlock()
+
+		i := 0
+		for i < len(x.Keys) && lessThan(x.Keys[i].K, start) {
+			i++
+		}
+		for i < len(x.Keys) && lessThanEq(x.Keys[i].K, end) {
+			if !x.Leaf {
+				child, err := b.getPage(x.Children[i])
+				if err != nil {
+					return nil, err
+				}
+				childKeys, err := b.rangeKeys(start, end, child)
+				if err != nil {
+					return nil, err
+				}
+				keys = append(keys, childKeys...)
+			}
+			keys = append(keys, x.Keys[i])
+			i++
+		}
+		if !x.Leaf && i < len(x.Children) {
+			child, err := b.getPage(x.Children[i])
+			if err != nil {
+				return nil, err
+			}
+			childKeys, err := b.rangeKeys(start, end, child)
+			if err != nil {
+				return nil, err
+			}
+			keys = append(keys, childKeys...)
+		}
+	}
+	return keys, nil
+}
+
+// deleteValueFromNode deletes a value from a node
+func (b *BTree) deleteValueFromNode(x *Node, key interface{}, value interface{}) error {
+	for _, k := range x.Keys {
+		if equal(k.K, key) {
+			// If the key has overflowed, retrieve all overflow pages and delete the value from there
+			if k.Overflowed {
+				overflowNode, err := b.getPage(k.OverflowPage)
+				if err != nil {
+					return err
+				}
+				for {
+					for j, v := range overflowNode.Keys[0].V {
+						if equal(v, value) {
+							overflowNode.Keys[0].V = append(overflowNode.Keys[0].V[:j], overflowNode.Keys[0].V[j+1:]...)
+							_, err := b.writePage(overflowNode)
+							if err != nil {
+								return err
+							}
+							return nil
+						}
+					}
+					// If the overflow node itself has overflowed, retrieve the next overflow page
+					if overflowNode.Keys[0].Overflowed {
+						overflowNode, err = b.getPage(overflowNode.Keys[0].OverflowPage)
+						if err != nil {
+							return err
+						}
+					} else {
+						break
+					}
+				}
+			} else {
+				// If the key has not overflowed, delete the value from the key's values
+				for j, v := range k.V {
+					if equal(v, value) {
+						k.V = append(k.V[:j], k.V[j+1:]...)
+						return nil
+					}
+				}
+			}
+		}
+	}
+
+	// If the key was not found in this node and the node is not a leaf, search the children
+	if !x.Leaf {
+		for _, childPage := range x.Children {
+			child, err := b.getPage(childPage)
+			if err != nil {
+				return err
+			}
+
+			err = b.deleteValueFromNode(child, key, value)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return errors.New("value not found")
+}
+
+// Remove removes a keys value from the BTree
+func (b *BTree) Remove(key interface{}, value interface{}) error {
+	root, err := b.getRoot()
+	if err != nil {
+		return err
+	}
+
+	// lock root
+	rootLock := b.getPageLock(root.Page)
+	rootLock.Lock()
+
+	// we will unlock the root after we are done
+	defer rootLock.Unlock()
+
+	err = b.deleteValueFromNode(root, key, value)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

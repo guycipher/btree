@@ -17,6 +17,9 @@
 package btree
 
 import (
+	"fmt"
+	"log"
+	"math/rand"
 	"os"
 	"testing"
 )
@@ -211,4 +214,262 @@ func TestBTree_Put(t *testing.T) {
 			return
 		}
 	}
+}
+
+func TestBTree_Put2(t *testing.T) {
+	defer os.Remove("test.db")
+	bt, err := Open("test.db", 777, 3)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	defer bt.Close()
+
+	get, err := bt.Get(1)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	log.Println(get)
+}
+
+func TestBTree_Delete(t *testing.T) {
+	defer os.Remove("test.db")
+	bt, err := Open("test.db", 777, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Close
+	defer bt.Close()
+
+	// Put
+	for i := 1; i < 100; i++ {
+		err := bt.Put(i, fmt.Sprintf("value-%d", i))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Delete
+	for i := 1; i < 100; i++ {
+		err := bt.Delete(i)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestBTree_Delete2(t *testing.T) {
+	defer os.Remove("test.db")
+	bt, err := Open("test.db", 777, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Close
+	defer bt.Close()
+
+	// Put
+	for i := 1; i < 2; i++ {
+		for j := 1; j < 77; j++ {
+			err := bt.Put(i, fmt.Sprintf("value-%d", j))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+		}
+	}
+
+	// Delete
+	for i := 1; i < 2; i++ {
+		err := bt.Delete(i)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestBTree_Delete3(t *testing.T) {
+	defer os.Remove("test.db")
+	bt, err := Open("test.db", 777, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Close
+	defer bt.Close()
+
+	// Put
+	for i := 1; i < 100; i++ {
+		bt.Put(i, fmt.Sprintf("value-%d", i))
+	}
+
+	// random from 1 to 100
+	n := 1 + rand.Intn(100)
+
+	// Delete
+	err = bt.Delete(n)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Get
+	values, err := bt.Get(n)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(values) != 0 {
+		t.Fatal("Value not deleted")
+	}
+
+}
+
+func TestBTree_Delete4(t *testing.T) {
+	// test delete value
+	defer os.Remove("test.db")
+
+	bt, err := Open("test.db", 777, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Close
+	defer bt.Close()
+
+	// Put
+	for i := 1; i < 200; i++ {
+		bt.Put(123, fmt.Sprintf("value-%d", i))
+	}
+
+	// Delete
+	err = bt.DeleteValueFromKey(123, "value-121")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Get
+	values, err := bt.Get(123)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// check for all values and make sure value-121 is not there
+	for _, value := range values {
+		if value == "value-121" {
+			t.Fatal("Value not deleted")
+		}
+	}
+
+}
+
+func TestIterator(t *testing.T) {
+	defer os.Remove("test.db")
+
+	bt, err := Open("test.db", 777, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Close
+	defer bt.Close()
+
+	// Put
+	for i := 1; i < 20; i++ {
+		for j := 1; j < 60; j++ {
+			err := bt.Put(i, fmt.Sprintf("value-%d", j))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+		}
+	}
+
+	// Iterate
+	it, err := bt.NewIteratorFromKey(12)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var got []interface{}
+
+	for {
+		value, err := it.Next()
+		if err != nil {
+			break
+		}
+
+		got = append(got, value)
+
+	}
+
+	if len(got) != 59 {
+		t.Fatal("Expected 59 values")
+	}
+
+	for i := 1; i < 60; i++ {
+		if got[i-1] != fmt.Sprintf("value-%d", i) {
+			t.Fatal("Value mismatch")
+		}
+	}
+}
+
+func TestBTree_Range(t *testing.T) {
+	defer os.Remove("test.db")
+
+	bt, err := Open("test.db", 777, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Close
+	defer bt.Close()
+
+	// Put
+	for i := 1; i < 20; i++ {
+		for j := 1; j < 50; j++ {
+			err := bt.Put(i, fmt.Sprintf("value-%d", j))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+		}
+	}
+
+	// Range
+	keys, err := bt.Range(12, 16)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedKeys := []int{12, 13, 14, 15, 16}
+
+	for i, key := range keys {
+		_, ok := key.(*Key)
+		if !ok {
+			t.Fatal("not of type *Key")
+		} else {
+
+			if key.(*Key).K != expectedKeys[i] {
+				t.Fatal(err)
+			}
+
+			overflow, err := bt.GetKeyOverflow(key.(*Key).K)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// overflow should have values 1 to 49
+			for j := 1; j < 50; j++ {
+				if overflow[j-1] != fmt.Sprintf("value-%d", j) {
+					t.Fatal(err)
+				}
+			}
+		}
+	}
+
 }
