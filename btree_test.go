@@ -473,3 +473,79 @@ func TestBTree_Range(t *testing.T) {
 	}
 
 }
+
+func TestBTree_Get(t *testing.T) {
+	defer os.Remove("test.db")
+
+	bt, err := Open("test.db", 777, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Close
+	defer bt.Close()
+
+	// Put
+	for i := 1; i < 20; i++ {
+		for j := 1; j < 50; j++ {
+			err := bt.Put(i, fmt.Sprintf("value-%d", j))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+		}
+	}
+
+	// Get
+	values, err := bt.Get(12)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(values) != 49 {
+		t.Fatal("Expected 49 values")
+	}
+
+	for i := 1; i < 50; i++ {
+		if values[i-1] != fmt.Sprintf("value-%d", i) {
+			t.Fatal("Value mismatch")
+		}
+	}
+}
+
+func TestBTree_Get2(t *testing.T) {
+	defer os.Remove("test.db")
+
+	bt, err := Open("test.db", 777, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Close
+	defer bt.Close()
+
+	// Put
+	for i := 1; i < 20; i++ {
+
+		err := bt.Put(i, fmt.Sprintf("value-%d", i))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+	}
+
+	for i := 1; i < 20; i++ {
+		values, err := bt.Get(i)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(values) != 1 {
+			t.Fatal("Expected 1 value")
+		}
+
+		if values[0] != fmt.Sprintf("value-%d", i) {
+			t.Fatal("Value mismatch")
+		}
+	}
+}
