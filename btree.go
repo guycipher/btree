@@ -579,20 +579,22 @@ func (b *BTree) handleKeyOverflow(x *Node, i int, key interface{}, value interfa
 
 // getPageLock returns the lock for a page
 // If the lock does not exist, it creates a new lock
+// getPageLock returns the lock for a page
+// If the lock does not exist, it creates a new lock
 func (b *BTree) getPageLock(pageno int64) *sync.RWMutex {
+	// Lock the mutex that protects the PageLocks map
+	b.TreeLock.Lock()
+	defer b.TreeLock.Unlock()
+
 	// Used for page level locking
 	// This is decent for concurrent reads and writes
-
 	if lock, ok := b.PageLocks[pageno]; ok {
 		return lock
 	} else {
 		// Create a new lock
 		b.PageLocks[pageno] = &sync.RWMutex{}
-
 		return b.PageLocks[pageno]
 	}
-
-	return nil
 }
 
 // Get page from file.

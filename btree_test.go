@@ -588,3 +588,44 @@ func TestPutMultipleValuesManyKeys(t *testing.T) {
 	}
 
 }
+
+func TestConcurrentPut(t *testing.T) {
+	defer os.Remove("test.db")
+
+	bt, err := Open("test.db", 0644, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Close
+	defer bt.Close()
+
+	for i := 1; i < 100; i++ {
+		go func(i int) {
+			for j := 1; j < 100; j++ {
+				err := bt.Put(i, fmt.Sprintf("value-%d", j))
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+		}(i)
+	}
+
+	for i := 1; i < 100; i++ {
+		values, err := bt.Get(i)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(values) != 99 {
+			t.Fatal("Expected 99 values", values)
+		}
+
+		for j := 1; j < 100; j++ {
+			if values[j-1] != fmt.Sprintf("value-%d", j) {
+				t.Fatal("Value mismatch")
+			}
+		}
+	}
+
+}
