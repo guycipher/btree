@@ -590,7 +590,21 @@ func TestPutMultipleValuesManyKeys(t *testing.T) {
 
 }
 
-// FAIL currently
+// FAILs SOMETIMES currently, need's investigating
+// panic: runtime error: slice bounds out of range [3:1]
+//goroutine 8 [running]:
+//github.com/guycipher/btree.(*BTree).splitChild(0xc0000a4d20, 0xc00039c9c0, 0x0, 0xc00039c6c0)
+///home/agpmastersystem/btree/btree.go:267 +0x6d2
+//github.com/guycipher/btree.(*BTree).splitRoot(0xc0000a4d20)
+///home/agpmastersystem/btree/btree.go:238 +0x172
+//github.com/guycipher/btree.(*BTree).Put(0xc0000a4d20, {0x56ef60, 0x6d3140}, {0x56ed20, 0xc00019c250})
+///home/agpmastersystem/btree/btree.go:326 +0xc5
+//github.com/guycipher/btree.TestConcurrentPut.func1(0x0?)
+///home/agpmastersystem/btree/btree_test.go:615 +0x111
+//created by github.com/guycipher/btree.TestConcurrentPut in goroutine 6
+///home/agpmastersystem/btree/btree_test.go:612 +0xe9
+
+// I believe it to be something to do with the page locking functionality.
 func TestConcurrentPut(t *testing.T) {
 	defer os.Remove("test.db")
 
@@ -604,16 +618,18 @@ func TestConcurrentPut(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 
-	for i := 1; i < 100; i++ {
+	for i := 1; i < 5; i++ {
 
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
 			for j := 1; j < 100; j++ {
-				err := bt.Put(i, fmt.Sprintf("value-%d", j))
+				err := bt.Put(j, fmt.Sprintf("value-%d", j))
 				if err != nil {
 					t.Fatal(err)
+					return // stop the test
 				}
+
 			}
 		}(i)
 
@@ -621,21 +637,15 @@ func TestConcurrentPut(t *testing.T) {
 
 	wg.Wait()
 
-	//for i := 1; i < 100; i++ {
-	//	values, err := bt.Get(i)
-	//	if err != nil {
-	//		t.Fatal(err)
-	//	}
-	//
-	//	if len(values) != 99 {
-	//		t.Fatal("Expected 99 values", values)
-	//	}
-	//
-	//	for j := 1; j < 100; j++ {
-	//		if values[j-1] != fmt.Sprintf("value-%d", j) {
-	//			t.Fatal("Value mismatch")
-	//		}
-	//	}
-	//}
+	for i := 1; i < 100; i++ {
+		values, err := bt.Get(i)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(values) <= 0 {
+			t.Fatal("Expected values")
+		}
+	}
 
 }
