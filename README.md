@@ -42,7 +42,7 @@ import "github.com/guycipher/btree"
 You can use the ``Open`` method to open an existing btree or create a new one.
 You can specify the file, permission and T(degree)
 ```
-btree := btree.Open("path/to/db", 777, 3)
+btree := btree.Open("path/to/btree.db", 0644, 3)
 ```
 
 ### Inserting a key-value pair
