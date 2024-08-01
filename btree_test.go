@@ -571,7 +571,6 @@ func TestPutMultipleValuesManyKeys(t *testing.T) {
 	}
 
 	for i := 1; i < 100; i++ {
-		log.Println("Getting key", i)
 		values, err := bt.Get(i)
 		if err != nil {
 			t.Fatal(err)
@@ -585,7 +584,6 @@ func TestPutMultipleValuesManyKeys(t *testing.T) {
 			if values[j-1] != fmt.Sprintf("value-%d", j) {
 				t.Fatal("Value mismatch")
 			}
-			log.Println(values[j-1])
 		}
 	}
 
