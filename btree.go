@@ -236,3 +236,77 @@ func (b *BTree) writePage(n *Node) (int64, error) {
 	return n.Page, nil
 
 }
+
+// lessThan compares two values and returns true if a is less than b
+func lessThan(a, b interface{}) bool {
+	// check if a and b are the same type
+	// if not, return false
+
+	aT := fmt.Sprintf("%T", a)
+	bT := fmt.Sprintf("%T", b)
+
+	if aT != bT {
+		return false
+	}
+
+	switch a := a.(type) {
+	case int:
+		if b, ok := b.(int); ok {
+			return a < b
+		}
+	case int8:
+		if b, ok := b.(int8); ok {
+			return a < b
+		}
+	case int16:
+		if b, ok := b.(int16); ok {
+			return a < b
+		}
+	case int32:
+		if b, ok := b.(int32); ok {
+			return a < b
+		}
+	case int64:
+		if b, ok := b.(int64); ok {
+			return a < b
+		}
+	case uint:
+		if b, ok := b.(uint); ok {
+			return a < b
+		}
+	case uint8:
+		if b, ok := b.(uint8); ok {
+			return a < b
+		}
+	case uint16:
+		if b, ok := b.(uint16); ok {
+			return a < b
+		}
+	case uint32:
+		if b, ok := b.(uint32); ok {
+			return a < b
+		}
+	case uint64:
+		if b, ok := b.(uint64); ok {
+			return a < b
+		}
+	case float32:
+		if b, ok := b.(float32); ok {
+			return a < b
+		}
+	case float64:
+		if b, ok := b.(float64); ok {
+			return a < b
+		}
+	case string:
+		if b, ok := b.(string); ok {
+			return a < b
+		}
+	case []byte:
+		if b, ok := b.([]byte); ok {
+			return bytes.Compare(a, b) < 0
+
+		}
+	}
+	return false
+}
