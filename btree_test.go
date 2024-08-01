@@ -589,6 +589,7 @@ func TestPutMultipleValuesManyKeys(t *testing.T) {
 
 }
 
+// FAIL currently
 func TestConcurrentPut(t *testing.T) {
 	defer os.Remove("test.db")
 

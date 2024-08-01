@@ -30,10 +30,11 @@ const PAGE_SIZE = 1024 // Page size for each node within the tree file
 
 // BTree is the main BTree struct
 type BTree struct {
-	File      *os.File                // The open btree file
-	T         int                     // The order of the tree
-	TreeLock  *sync.RWMutex           // Lock for the tree file
-	PageLocks map[int64]*sync.RWMutex // Locks for each btree node, consumes some memory but allows for concurrent reads
+	File        *os.File                // The open btree file
+	T           int                     // The order of the tree
+	TreeLock    *sync.RWMutex           // Lock for the tree file
+	PageLocks   map[int64]*sync.RWMutex // Locks for each btree node, consumes some memory but allows for concurrent reads
+	PageLocksMu *sync.RWMutex           // Lock for the page locks
 }
 
 // Key is the key struct for the BTree
@@ -86,10 +87,11 @@ func Open(name string, perm int, t int) (*BTree, error) {
 	}
 
 	return &BTree{
-		File:      treeFile,
-		PageLocks: pgLocks,
-		T:         t,
-		TreeLock:  &sync.RWMutex{},
+		File:        treeFile,
+		PageLocks:   pgLocks,
+		T:           t,
+		TreeLock:    &sync.RWMutex{},
+		PageLocksMu: &sync.RWMutex{},
 	}, nil
 }
 
@@ -579,12 +581,10 @@ func (b *BTree) handleKeyOverflow(x *Node, i int, key interface{}, value interfa
 
 // getPageLock returns the lock for a page
 // If the lock does not exist, it creates a new lock
-// getPageLock returns the lock for a page
-// If the lock does not exist, it creates a new lock
 func (b *BTree) getPageLock(pageno int64) *sync.RWMutex {
 	// Lock the mutex that protects the PageLocks map
-	b.TreeLock.Lock()
-	defer b.TreeLock.Unlock()
+	b.PageLocksMu.Lock()
+	defer b.PageLocksMu.Unlock()
 
 	// Used for page level locking
 	// This is decent for concurrent reads and writes
