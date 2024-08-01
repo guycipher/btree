@@ -68,12 +68,10 @@ btree.Delete("key")
 
 ### Removing a value within key
 
-You can remove a value from a key by calling the Remove function and passing in the key and the value.
-
+To remove a value from a key you can use the ``Remove`` method.
 ```
 btree.Remove("key", "value")
 ```
-Removes the value from the key.
 
 ### Iterator
 
