@@ -91,29 +91,27 @@ func (b *BTree) Close() error {
 	return b.File.Close()
 }
 
-// Put inserts a key into the BTree
-// A key can have multiple values
-func (b *BTree) Put(key interface{}, value interface{}) error {
+// newBTreeNode
+func (b *BTree) newBTreeNode(leaf bool) (*Node, error) {
+	newNode := &Node{
+		Leaf: leaf,
+		Keys: make([]*Key, 0),
+	}
 
-	return nil
-}
+	var err error
+	newNode.Page, err = b.newPageNumber()
+	if err != nil {
+		return nil, err
+	}
 
-// Delete deletes a key and its values from the BTree
-func (b *BTree) Delete(k interface{}) error {
+	// We write the node to file
+	_, err = b.writePage(newNode)
+	if err != nil {
+		return nil, err
+	}
 
-	return nil
-}
-
-// DeleteValueFromKey deletes a value from a key
-func (b *BTree) DeleteValueFromKey(key interface{}, value interface{}) error {
-
-	return nil
-}
-
-// Get gets the values of a key
-func (b *BTree) Get(k interface{}) ([]interface{}, error) {
-
-	return nil, nil
+	// we return the new node
+	return newNode, nil
 }
 
 // encodeNode encodes a node into a byte slice
@@ -155,6 +153,354 @@ func decodeNode(data []byte) (*Node, error) {
 	}
 
 	return n, nil
+}
+
+// getRoot returns the root of the BTree
+func (b *BTree) getRoot() (*Node, error) {
+	root, err := b.getPage(0)
+	if err != nil {
+		if err.Error() == "failed to read page 0: EOF" {
+			// create root
+			// initial root if a leaf node and starts at page 0
+			root = &Node{
+				Leaf:     true,
+				Page:     0,
+				Children: make([]int64, 0),
+				Keys:     make([]*Key, 0),
+			}
+
+			// write the root to the file
+			_, err = b.writePage(root)
+			if err != nil {
+				return nil, err
+
+			}
+		} else {
+			return nil, err
+		}
+	}
+
+	return root, nil
+}
+
+// splitRoot splits the root node
+func (b *BTree) splitRoot() error {
+	oldRoot, err := b.getRoot()
+	if err != nil {
+		return err
+	}
+
+	// Create new node (this will be the new "old root")
+	newOldRoot, err := b.newBTreeNode(oldRoot.Leaf)
+	if err != nil {
+		return err
+	}
+
+	// lock the new root
+	newRootLock := b.getPageLock(newOldRoot.Page)
+	newRootLock.Lock()
+	defer newRootLock.Unlock()
+
+	// Copy keys and children from old root to new old root
+	newOldRoot.Keys = oldRoot.Keys
+	newOldRoot.Children = oldRoot.Children
+
+	// Create new root and make new old root a child of new root
+	newRoot := &Node{
+		Page:     0, // New root takes the old root's page number
+		Children: []int64{newOldRoot.Page},
+	}
+
+	// Split new old root and move median key up to new root
+	err = b.splitChild(newRoot, 0, newOldRoot)
+	if err != nil {
+		return err
+	}
+
+	// Write new root and new old root to file
+	_, err = b.writePage(newRoot)
+	if err != nil {
+		return err
+	}
+	_, err = b.writePage(newOldRoot)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// splitChild splits a child node of x at index i
+func (b *BTree) splitChild(x *Node, i int, y *Node) error {
+	z, err := b.newBTreeNode(y.Leaf)
+	if err != nil {
+		return err
+	}
+
+	zLock := b.getPageLock(z.Page)
+	zLock.Lock()
+	defer zLock.Unlock()
+
+	z.Keys = append(z.Keys, y.Keys[b.T:]...)
+	y.Keys = y.Keys[:b.T]
+
+	if !y.Leaf {
+		z.Children = append(z.Children, y.Children[b.T:]...)
+		y.Children = y.Children[:b.T]
+	}
+
+	x.Keys = append(x.Keys, nil)
+	x.Children = append(x.Children, 0)
+
+	for j := len(x.Keys) - 1; j > i; j-- {
+		x.Keys[j] = x.Keys[j-1]
+	}
+	x.Keys[i] = y.Keys[b.T-1]
+
+	// remove the key from y
+	y.Keys = y.Keys[:b.T-1]
+
+	for j := len(x.Children) - 1; j > i+1; j-- {
+		x.Children[j] = x.Children[j-1]
+	}
+	x.Children[i+1] = z.Page
+
+	_, err = b.writePage(y)
+	if err != nil {
+		return err
+	}
+
+	_, err = b.writePage(z)
+	if err != nil {
+		return err
+	}
+
+	_, err = b.writePage(x)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Put inserts a key into the BTree
+// A key can have multiple values
+// Put inserts a key value pair into the BTree
+func (b *BTree) Put(key interface{}, value interface{}) error {
+	root, err := b.getRoot()
+	if err != nil {
+		return err
+	}
+
+	// lock root
+	rootLock := b.getPageLock(root.Page)
+	rootLock.Lock()
+
+	// we will unlock the root after we are done
+	defer rootLock.Unlock()
+
+	if len(root.Keys) == (2*b.T)-1 {
+		err = b.splitRoot()
+		if err != nil {
+			return err
+		}
+
+		root, err = b.getPage(0)
+		if err != nil {
+			return err
+
+		}
+	}
+
+	err = b.insertNonFull(root, key, value)
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
+// insertNonFull inserts a key into a non-full node
+func (b *BTree) insertNonFull(x *Node, key interface{}, value interface{}) error {
+	i := len(x.Keys) - 1
+
+	if x.Leaf {
+		for i >= 0 && lessThan(key, x.Keys[i].K) {
+			i--
+		}
+
+		// If key exists, append the value
+		if i >= 0 && equal(key, x.Keys[i].K) {
+			x.Keys[i].V = append(x.Keys[i].V, value)
+
+			// check if the key has overflowed
+			if b.nodeKeyOverflowed(x) {
+				// remove last value from the key
+				x.Keys[i].V = x.Keys[i].V[:len(x.Keys[i].V)-1]
+				err := b.handleKeyOverflow(x, i, key, value)
+				if err != nil {
+					return err
+				}
+
+			}
+		} else {
+			// If key doesn't exist, insert new key and value
+			x.Keys = append(x.Keys, nil)
+			j := len(x.Keys) - 1
+			for j > i+1 {
+				x.Keys[j] = x.Keys[j-1]
+				j--
+			}
+
+			x.Keys[j] = &Key{K: key, V: []interface{}{value}}
+
+		}
+
+		_, err := b.writePage(x)
+		if err != nil {
+			return err
+		}
+	} else {
+		for i >= 0 && lessThan(key, x.Keys[i].K) {
+			i--
+		}
+		i++
+		child, err := b.getPage(x.Children[i])
+		if err != nil {
+			return err
+		}
+		if len(child.Keys) == (2*b.T)-1 {
+			err = b.splitChild(x, i, child)
+			if err != nil {
+				return err
+			}
+			if greaterThan(key, x.Keys[i].K) {
+				i++
+			}
+		}
+		child, err = b.getPage(x.Children[i])
+		if err != nil {
+			return err
+		}
+
+		// lock the child
+		childLock := b.getPageLock(child.Page)
+		childLock.Lock()
+		defer childLock.Unlock()
+
+		err = b.insertNonFull(child, key, value)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Delete deletes a key and its values from the BTree
+func (b *BTree) Delete(k interface{}) error {
+
+	return nil
+}
+
+// DeleteValueFromKey deletes a value from a key
+func (b *BTree) DeleteValueFromKey(key interface{}, value interface{}) error {
+
+	return nil
+}
+
+// Get gets the values of a key
+func (b *BTree) Get(k interface{}) ([]interface{}, error) {
+
+	return nil, nil
+}
+
+// handleKeyOverflow handles the overflow of a key
+func (b *BTree) handleKeyOverflow(x *Node, i int, key interface{}, value interface{}) error {
+	if x.Keys[i].Overflowed {
+		// Get the last overflow page
+		overflowPage, err := b.getPage(x.Keys[i].OverflowPage)
+		if err != nil {
+			return err
+		}
+		for overflowPage.Keys[0].Overflowed {
+			overflowPage, err = b.getPage(overflowPage.Keys[0].OverflowPage)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Append the new value to the overflow page
+		overflowPage.Keys[0].V = append(overflowPage.Keys[0].V, value)
+
+		// Check if the overflow page has overflowed
+		if b.nodeKeyOverflowed(overflowPage) {
+			// Remove the last value from the overflow page
+			overflowPage.Keys[0].V = overflowPage.Keys[0].V[:len(overflowPage.Keys[0].V)-1]
+
+			// Create a new overflow page
+			newOverflowPage, err := b.newBTreeNode(true)
+			if err != nil {
+				return err
+			}
+
+			// Add the value to the new overflow page
+			if len(overflowPage.Keys[0].V) == 0 {
+				overflowPage.Keys[0].V = append(overflowPage.Keys[0].V, value)
+			} else {
+				newOverflowPage.Keys = append(newOverflowPage.Keys, &Key{K: key, V: []interface{}{value}})
+			}
+
+			// Link the old overflow page to the new one
+			overflowPage.Keys[0].Overflowed = true
+			overflowPage.Keys[0].OverflowPage = newOverflowPage.Page
+
+			// Write the new overflow page to the file
+			_, err = b.writePage(newOverflowPage)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Write the old overflow page to the file
+		_, err = b.writePage(overflowPage)
+		if err != nil {
+			return err
+		}
+	} else {
+		existingOverflow, err := b.getAvailableOverflowNode()
+		if err != nil {
+			return err
+		}
+
+		if existingOverflow == nil {
+			existingOverflow, err = b.newBTreeNode(true)
+			if err != nil {
+				return err
+			}
+		}
+
+		if len(existingOverflow.Keys) == 0 {
+			existingOverflow.Keys = append(existingOverflow.Keys, &Key{K: key, V: []interface{}{value}})
+		} else {
+			existingOverflow.Keys[0].V = append(existingOverflow.Keys[0].V, value)
+		}
+
+		x.Keys[i].Overflowed = true
+		x.Keys[i].OverflowPage = existingOverflow.Page
+
+		_, err = b.writePage(existingOverflow)
+		if err != nil {
+			return err
+		}
+
+		_, err = b.writePage(x)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // getPageLock returns the lock for a page
@@ -667,4 +1013,99 @@ func notEq(a, b interface{}) bool {
 		}
 	}
 	return false
+}
+
+// PrintTree prints the tree (for debugging purposes ****)
+func (b *BTree) PrintTree() error {
+	root, err := b.getRoot()
+	if err != nil {
+		return err
+	}
+	err = b.printTree(root, 0)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// printTree prints the tree (for debugging purposes ****)
+func (b *BTree) printTree(x *Node, level int) error {
+	if x != nil {
+
+		fmt.Printf("Level %d: ", level)
+		for _, key := range x.Keys {
+			fmt.Printf("%v ", key.K)
+		}
+		fmt.Println()
+
+		for _, childPage := range x.Children {
+			child, err := b.getPage(childPage)
+			if err != nil {
+				return err
+			}
+			err = b.printTree(child, level+1)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// nodeKeyOverflowed checks if a node's keys have overflowed
+func (b *BTree) nodeKeyOverflowed(n *Node) bool {
+	buff := bytes.NewBuffer([]byte{})
+
+	enc := gob.NewEncoder(buff)
+	err := enc.Encode(n)
+	if err != nil {
+		return false
+	}
+
+	if len(buff.Bytes()) > (PAGE_SIZE / 2) {
+		return true
+	} else {
+		return false
+
+	}
+
+}
+
+// getAvailableOverflowNode returns a reusable Node from the BTree file
+func (b *BTree) getAvailableOverflowNode() (*Node, error) {
+	// Get the total number of pages in the BTree file
+	pageCount := b.pageCount()
+
+	// Loop through all the pages
+	for i := int64(0); i < pageCount; i++ {
+		// Get the Node at the current page
+		node, err := b.getPage(i)
+		if err != nil {
+			return nil, err
+		}
+
+		// Check if the Node is marked for reuse
+		if node.Reuse {
+
+			// Write the cleared Node back to the file
+			_, err = b.writePage(node)
+			if err != nil {
+				return nil, err
+			}
+
+			node.Reuse = false
+
+			// Return the cleared Node
+			return node, nil
+		}
+	}
+
+	// If no reusable Node is found, return nil
+	return nil, nil
+}
+
+// pageCount returns the total number of pages in the BTree file
+func (b *BTree) pageCount() int64 {
+	stat, _ := b.File.Stat()
+	return stat.Size() / PAGE_SIZE
 }

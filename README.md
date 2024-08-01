@@ -7,5 +7,8 @@ This package provides an implementation of a concurrent paged disk BTree. A BTre
 - **Disk-based**: The BTree is designed to be used with a disk-based storage engine.
 - **Customizable**: The BTree allows you to specify the page size and T.
 
+## From Author
+I created this package for other projects I am working on. I wanted a simple, easy-to-use disk BTree that I could use in my projects and now hopefully yours.
+
 ## Usage
 coming soon

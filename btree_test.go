@@ -193,3 +193,22 @@ func TestGetPage(t *testing.T) {
 	}
 
 }
+
+func TestBTree_Put(t *testing.T) {
+	defer os.Remove("test.db")
+	bt, err := Open("test.db", 777, 3)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	defer bt.Close()
+
+	for i := 0; i < 100; i++ {
+		err := bt.Put(i, i)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	}
+}
