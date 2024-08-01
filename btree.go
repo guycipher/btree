@@ -310,3 +310,361 @@ func lessThan(a, b interface{}) bool {
 	}
 	return false
 }
+
+// greaterThan compares two values and returns true if a is greater than b
+func greaterThan(a, b interface{}) bool {
+	// check if a and b are the same type
+	// if not, return false
+
+	aT := fmt.Sprintf("%T", a)
+	bT := fmt.Sprintf("%T", b)
+
+	if aT != bT {
+		return false
+	}
+
+	switch a := a.(type) {
+	case int:
+		if b, ok := b.(int); ok {
+			return a > b
+		}
+	case int8:
+		if b, ok := b.(int8); ok {
+			return a > b
+		}
+	case int16:
+		if b, ok := b.(int16); ok {
+			return a > b
+		}
+	case int32:
+		if b, ok := b.(int32); ok {
+			return a > b
+		}
+	case int64:
+		if b, ok := b.(int64); ok {
+			return a > b
+		}
+	case uint:
+		if b, ok := b.(uint); ok {
+			return a > b
+		}
+	case uint8:
+		if b, ok := b.(uint8); ok {
+			return a > b
+		}
+	case uint16:
+		if b, ok := b.(uint16); ok {
+			return a > b
+		}
+	case uint32:
+		if b, ok := b.(uint32); ok {
+			return a > b
+		}
+	case uint64:
+		if b, ok := b.(uint64); ok {
+			return a > b
+		}
+	case float32:
+		if b, ok := b.(float32); ok {
+			return a > b
+		}
+	case float64:
+		if b, ok := b.(float64); ok {
+			return a > b
+		}
+	case string:
+		if b, ok := b.(string); ok {
+			return a > b
+		}
+	case []byte:
+		if b, ok := b.([]byte); ok {
+			return bytes.Compare(a, b) > 0
+		}
+	}
+	return false
+}
+
+// equal compares two values and returns true if a is equal than b
+func equal(a, b interface{}) bool {
+	// check if a and b are the same type
+	// if not, return false
+
+	aT := fmt.Sprintf("%T", a)
+	bT := fmt.Sprintf("%T", b)
+
+	if aT != bT {
+		return false
+	}
+
+	switch a := a.(type) {
+	case int:
+		if b, ok := b.(int); ok {
+			return a == b
+		}
+	case int8:
+		if b, ok := b.(int8); ok {
+			return a == b
+		}
+	case int16:
+		if b, ok := b.(int16); ok {
+			return a == b
+		}
+	case int32:
+		if b, ok := b.(int32); ok {
+			return a == b
+		}
+	case int64:
+		if b, ok := b.(int64); ok {
+			return a == b
+		}
+	case uint:
+		if b, ok := b.(uint); ok {
+			return a == b
+		}
+	case uint8:
+		if b, ok := b.(uint8); ok {
+			return a == b
+		}
+	case uint16:
+		if b, ok := b.(uint16); ok {
+			return a == b
+		}
+	case uint32:
+		if b, ok := b.(uint32); ok {
+			return a == b
+		}
+	case uint64:
+		if b, ok := b.(uint64); ok {
+			return a == b
+		}
+	case float32:
+		if b, ok := b.(float32); ok {
+			return a == b
+		}
+	case float64:
+		if b, ok := b.(float64); ok {
+			return a == b
+		}
+	case string:
+		if b, ok := b.(string); ok {
+			return a == b
+		}
+	case []byte:
+		if b, ok := b.([]byte); ok {
+			return bytes.Equal(a, b)
+		}
+
+	}
+	return false
+}
+
+// greaterThanEq compares two values and returns true if a greater than or equal to b
+func greaterThanEq(a, b interface{}) bool {
+	// check if a and b are the same type
+	// if not, return false
+
+	aT := fmt.Sprintf("%T", a)
+	bT := fmt.Sprintf("%T", b)
+
+	if aT != bT {
+		return false
+	}
+
+	switch a := a.(type) {
+	case int:
+		if b, ok := b.(int); ok {
+			return a >= b
+		}
+	case int8:
+		if b, ok := b.(int8); ok {
+			return a >= b
+		}
+	case int16:
+		if b, ok := b.(int16); ok {
+			return a >= b
+		}
+	case int32:
+		if b, ok := b.(int32); ok {
+			return a >= b
+		}
+	case int64:
+		if b, ok := b.(int64); ok {
+			return a >= b
+		}
+	case uint:
+		if b, ok := b.(uint); ok {
+			return a >= b
+		}
+	case uint8:
+		if b, ok := b.(uint8); ok {
+			return a >= b
+		}
+	case uint16:
+		if b, ok := b.(uint16); ok {
+			return a >= b
+		}
+	case uint32:
+		if b, ok := b.(uint32); ok {
+			return a >= b
+		}
+	case uint64:
+		if b, ok := b.(uint64); ok {
+			return a >= b
+		}
+	case float32:
+		if b, ok := b.(float32); ok {
+			return a >= b
+		}
+	case float64:
+		if b, ok := b.(float64); ok {
+			return a >= b
+		}
+	case string:
+		if b, ok := b.(string); ok {
+			return a >= b
+		}
+	}
+	return false
+}
+
+// lessThanEq compares two values and returns true if a is less than or equal to b
+func lessThanEq(a, b interface{}) bool {
+	// check if a and b are the same type
+	// if not, return false
+
+	aT := fmt.Sprintf("%T", a)
+	bT := fmt.Sprintf("%T", b)
+
+	if aT != bT {
+		return false
+	}
+
+	switch a := a.(type) {
+	case int:
+		if b, ok := b.(int); ok {
+			return a <= b
+		}
+	case int8:
+		if b, ok := b.(int8); ok {
+			return a <= b
+		}
+	case int16:
+		if b, ok := b.(int16); ok {
+			return a <= b
+		}
+	case int32:
+		if b, ok := b.(int32); ok {
+			return a <= b
+		}
+	case int64:
+		if b, ok := b.(int64); ok {
+			return a <= b
+		}
+	case uint:
+		if b, ok := b.(uint); ok {
+			return a <= b
+		}
+	case uint8:
+		if b, ok := b.(uint8); ok {
+			return a <= b
+		}
+	case uint16:
+		if b, ok := b.(uint16); ok {
+			return a <= b
+		}
+	case uint32:
+		if b, ok := b.(uint32); ok {
+			return a <= b
+		}
+	case uint64:
+		if b, ok := b.(uint64); ok {
+			return a <= b
+		}
+	case float32:
+		if b, ok := b.(float32); ok {
+			return a <= b
+		}
+	case float64:
+		if b, ok := b.(float64); ok {
+			return a <= b
+		}
+	case string:
+		if b, ok := b.(string); ok {
+			return a <= b
+		}
+	}
+	return false
+}
+
+// notEq compares two values and returns true if a is not equal to b
+func notEq(a, b interface{}) bool {
+	// check if a and b are the same type
+	// if not, return false
+
+	aT := fmt.Sprintf("%T", a)
+	bT := fmt.Sprintf("%T", b)
+
+	if aT != bT {
+		return false
+	}
+
+	switch a := a.(type) {
+	case int:
+		if b, ok := b.(int); ok {
+			return a != b
+		}
+	case int8:
+		if b, ok := b.(int8); ok {
+			return a != b
+		}
+	case int16:
+		if b, ok := b.(int16); ok {
+			return a != b
+		}
+	case int32:
+		if b, ok := b.(int32); ok {
+			return a != b
+		}
+	case int64:
+		if b, ok := b.(int64); ok {
+			return a != b
+		}
+	case uint:
+		if b, ok := b.(uint); ok {
+			return a != b
+		}
+	case uint8:
+		if b, ok := b.(uint8); ok {
+			return a != b
+		}
+	case uint16:
+		if b, ok := b.(uint16); ok {
+			return a != b
+		}
+	case uint32:
+		if b, ok := b.(uint32); ok {
+			return a != b
+		}
+	case uint64:
+		if b, ok := b.(uint64); ok {
+			return a != b
+		}
+	case float32:
+		if b, ok := b.(float32); ok {
+			return a != b
+		}
+	case float64:
+		if b, ok := b.(float64); ok {
+			return a != b
+		}
+	case string:
+		if b, ok := b.(string); ok {
+			return a != b
+		}
+	case []byte:
+		if b, ok := b.([]byte); ok {
+			return !bytes.Equal(a, b)
+		}
+	}
+	return false
+}
