@@ -42,7 +42,7 @@ import "github.com/guycipher/btree"
 You can create a new BTree by calling the NewBTree function and passing in the path to the database file, the permissions for the file, and the order of the BTree.
 
 ```
-btree := btree.NewBTree("path/to/db", 777, 3)
+btree := btree.Open("path/to/db", 777, 3)
 ```
 
 ### Inserting a key-value pair
