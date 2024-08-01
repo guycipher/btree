@@ -39,39 +39,32 @@ import "github.com/guycipher/btree"
 
 ### Creating a new BTree
 
-You can create a new BTree by calling the NewBTree function and passing in the path to the database file, the permissions for the file, and the order of the BTree.
-
+You can use the ``Open`` method to open an existing btree or create a new one.
+You can specify the file, permission and T(degree)
 ```
 btree := btree.Open("path/to/db", 777, 3)
 ```
 
 ### Inserting a key-value pair
 
-You can insert a key-value pair into the BTree by calling the Insert function and passing in the key and value.
-
+You can insert a value into a key using the ``Put`` method.  Keys can store many values.
 ```
-btree.Insert("key", "value")
+btree.Put("key", "value")
 ```
-
-Inserting the same key appends the value to the key.
 
 ### Getting a value
 
-You can get a value from the BTree by calling the Get function and passing in the key.
-
+To get a value you can you the ``Get`` method.  The get method will return all the keys values.
 ```
 value := btree.Get("key")
 ```
-This will get all the values associated with the key.
 
 ### Deleting a key
 
-You can delete a key from the BTree by calling the Delete function and passing in the key.
-
+To delete a key and all of it's values you can use the ``Delete`` method.
 ```
 btree.Delete("key")
 ```
-This will delete the key and all its values.
 
 ### Removing a value within key
 
