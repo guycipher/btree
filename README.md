@@ -1,14 +1,12 @@
 # GO BTree
 Embedded btree database package fully implemented in GO.
-This package provides an implementation of a concurrent paged disk BTree. A BTree is a self-balancing search tree, in which each node contains multiple keys and links to child nodes. It's optimized for systems that read and write large blocks of data, making it ideal for disk-based data structures.
 
-I created this package for other projects I am working on. I wanted a simple, easy-to-use disk BTree that I could use in my projects and now hopefully yours.
+This package provides an implementation of a concurrent paged disk BTree.  I created this package for other projects I am working on. I wanted a simple, easy-to-use disk BTree that I could use in my projects and now hopefully yours.
 Feel free to drop a PR or an issue if you have any suggestions or improvements.
 
 ## Features
 - **Concurrent**: The BTree is safe for concurrent use.
 - **Disk-based**: The BTree is designed to be used with a disk-based storage engine.
-- **Customizable**: The BTree allows you to specify the page size and T.
 
 ## Supported key types
 ```
@@ -98,6 +96,14 @@ for it.Next() {
     }
 
     fmt.Println(value)
+}
+```
+
+### Range query
+```
+keys, err := bt.Range(12, 16)
+if err != nil {
+    t.Fatal(err)
 }
 ```
 

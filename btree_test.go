@@ -346,7 +346,7 @@ func TestBTree_Delete4(t *testing.T) {
 	}
 
 	// Delete
-	err = bt.DeleteValueFromKey(123, "value-121")
+	err = bt.Remove(123, "value-121")
 
 	if err != nil {
 		t.Fatal(err)
