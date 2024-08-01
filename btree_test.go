@@ -28,7 +28,7 @@ import (
 // We are testing Close as well no point to write another test for that specifically
 func TestOpen(t *testing.T) {
 	defer os.Remove("test.db")
-	bt, err := Open("test.db", 777, 3)
+	bt, err := Open("test.db", 0644, 3)
 	if err != nil {
 		t.Error(err)
 		return
@@ -115,7 +115,7 @@ func TestDecodeNode(t *testing.T) {
 
 func TestGetPageLock(t *testing.T) {
 	defer os.Remove("test.db")
-	bt, err := Open("test.db", 777, 3)
+	bt, err := Open("test.db", 0644, 3)
 	if err != nil {
 		t.Error(err)
 		return
@@ -137,7 +137,7 @@ func TestGetPageLock(t *testing.T) {
 
 func TestGetPage(t *testing.T) {
 	defer os.Remove("test.db")
-	bt, err := Open("test.db", 777, 3)
+	bt, err := Open("test.db", 0644, 3)
 	if err != nil {
 		t.Error(err)
 		return
@@ -199,7 +199,7 @@ func TestGetPage(t *testing.T) {
 
 func TestBTree_Put(t *testing.T) {
 	defer os.Remove("test.db")
-	bt, err := Open("test.db", 777, 3)
+	bt, err := Open("test.db", 0644, 3)
 	if err != nil {
 		t.Error(err)
 		return
@@ -218,7 +218,7 @@ func TestBTree_Put(t *testing.T) {
 
 func TestBTree_Put2(t *testing.T) {
 	defer os.Remove("test.db")
-	bt, err := Open("test.db", 777, 3)
+	bt, err := Open("test.db", 0644, 3)
 	if err != nil {
 		t.Error(err)
 		return
@@ -237,7 +237,7 @@ func TestBTree_Put2(t *testing.T) {
 
 func TestBTree_Delete(t *testing.T) {
 	defer os.Remove("test.db")
-	bt, err := Open("test.db", 777, 3)
+	bt, err := Open("test.db", 0644, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,7 +264,7 @@ func TestBTree_Delete(t *testing.T) {
 
 func TestBTree_Delete2(t *testing.T) {
 	defer os.Remove("test.db")
-	bt, err := Open("test.db", 777, 3)
+	bt, err := Open("test.db", 0644, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -294,7 +294,7 @@ func TestBTree_Delete2(t *testing.T) {
 
 func TestBTree_Delete3(t *testing.T) {
 	defer os.Remove("test.db")
-	bt, err := Open("test.db", 777, 3)
+	bt, err := Open("test.db", 0644, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -332,7 +332,7 @@ func TestBTree_Delete4(t *testing.T) {
 	// test delete value
 	defer os.Remove("test.db")
 
-	bt, err := Open("test.db", 777, 3)
+	bt, err := Open("test.db", 0644, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -370,7 +370,7 @@ func TestBTree_Delete4(t *testing.T) {
 func TestIterator(t *testing.T) {
 	defer os.Remove("test.db")
 
-	bt, err := Open("test.db", 777, 3)
+	bt, err := Open("test.db", 0644, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -421,7 +421,7 @@ func TestIterator(t *testing.T) {
 func TestBTree_Range(t *testing.T) {
 	defer os.Remove("test.db")
 
-	bt, err := Open("test.db", 777, 3)
+	bt, err := Open("test.db", 0644, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -477,7 +477,7 @@ func TestBTree_Range(t *testing.T) {
 func TestBTree_Get(t *testing.T) {
 	defer os.Remove("test.db")
 
-	bt, err := Open("test.db", 777, 3)
+	bt, err := Open("test.db", 0644, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -516,7 +516,7 @@ func TestBTree_Get(t *testing.T) {
 func TestBTree_Get2(t *testing.T) {
 	defer os.Remove("test.db")
 
-	bt, err := Open("test.db", 777, 3)
+	bt, err := Open("test.db", 0644, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -548,4 +548,44 @@ func TestBTree_Get2(t *testing.T) {
 			t.Fatal("Value mismatch")
 		}
 	}
+}
+
+func TestPutMultipleValuesManyKeys(t *testing.T) {
+	defer os.Remove("test.db")
+
+	bt, err := Open("test.db", 0644, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Close
+	defer bt.Close()
+
+	for i := 1; i < 100; i++ {
+		for j := 1; j < 20; j++ {
+			err := bt.Put(i, fmt.Sprintf("value-%d", j))
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	for i := 1; i < 100; i++ {
+		values, err := bt.Get(i)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(values) != 9 {
+			t.Fatal("Expected 9 values")
+		}
+
+		for j := 1; j < 20; j++ {
+			if values[j-1] != fmt.Sprintf("value-%d", j) {
+				t.Fatal("Value mismatch")
+			}
+			log.Println(values[j-1])
+		}
+	}
+
 }
