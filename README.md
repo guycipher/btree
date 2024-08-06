@@ -1,12 +1,15 @@
 # GO BTree
-Embedded btree database package fully implemented in GO.
-
-This package provides an implementation of a concurrent paged disk BTree.  I created this package for other projects I am working on. I wanted a simple, easy-to-use disk BTree that I could use in my projects and now hopefully yours.
-Feel free to drop a PR or an issue if you have any suggestions or improvements.
+This is an open source licensed under GPL paged disk btree implementation in Go.
 
 ## Features
-- **Concurrent**: The BTree is safe for concurrent use.
-- **Disk-based**: The BTree is designed to be used with a disk-based storage engine.
+- Easy to use API with Put, Get, Delete, Remove, Iterator, Range methods
+- Fine grained concurrency control with node level locks
+- Disk based storage
+- Range queries
+- Iterator
+- Supports keys with multiple values
+
+### **Not production ready just yet**
 
 ## Supported key types
 ```
@@ -42,35 +45,35 @@ import "github.com/guycipher/btree"
 You can use the ``Open`` method to open an existing btree or create a new one.
 You can specify the file, permission and T(degree)
 ```
-btree := btree.Open("path/to/btree.db", 0644, 3)
+bt, err := btree.Open("path/to/btree.db", 0644, 3)
 ```
 
 ### Inserting a key-value pair
 
 You can insert a value into a key using the ``Put`` method.  Keys can store many values.
 ```
-btree.Put("key", "value")
+err := bt.Put("key", "value")
 ```
 
 ### Getting a value
 
 To get a value you can you the ``Get`` method.  The get method will return all the keys values.
 ```
-value := btree.Get("key")
+values, err := bt.Get("key")
 ```
 
 ### Deleting a key
 
 To delete a key and all of it's values you can use the ``Delete`` method.
 ```
-btree.Delete("key")
+err := btree.Delete("key")
 ```
 
 ### Removing a value within key
 
 To remove a value from a key you can use the ``Remove`` method.
 ```
-btree.Remove("key", "value")
+err := btree.Remove("key", "value")
 ```
 
 ### Iterator
@@ -93,9 +96,6 @@ for it.Next() {
 ### Range query
 ```
 keys, err := bt.Range(12, 16)
-if err != nil {
-    t.Fatal(err)
-}
 ```
 
 ### Closing the BTree
@@ -103,5 +103,5 @@ if err != nil {
 You can close the BTree by calling the Close function.
 
 ```
-btree.Close()
+err := btree.Close()
 ```
