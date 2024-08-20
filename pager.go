@@ -295,7 +295,7 @@ func (p *Pager) Write(data []byte) (int64, error) {
 		}
 
 		// create a new page
-		pageId := (fileInfo.Size() / (PAGE_SIZE + HEADER_SIZE)) + 1
+		pageId := fileInfo.Size() / (PAGE_SIZE + HEADER_SIZE)
 
 		err = p.WriteTo(pageId, data)
 		if err != nil {

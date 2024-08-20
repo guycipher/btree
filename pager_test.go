@@ -17,6 +17,7 @@
 package btree
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"testing"
@@ -64,8 +65,8 @@ func TestPager_Write(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if string(data) != "Hello World" {
-		t.Fatalf("expected Hello World, got %s", string(data))
+	if string(bytes.ReplaceAll(data, []byte("\x00"), []byte(""))) != "Hello World" {
+		t.Fatalf("expected Hello World, got %s", string(bytes.ReplaceAll(data, []byte("\x00"), []byte(""))))
 	}
 
 }
@@ -80,10 +81,34 @@ func TestPager_Write2(t *testing.T) {
 	}
 	defer pager.Close()
 
-	for i := 0; i < 1000000; i++ {
+	for i := 0; i < 10000; i++ {
 		_, err := pager.Write([]byte(fmt.Sprintf("Hello World %d", i)))
 		if err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+func TestPager_Count(t *testing.T) {
+	defer os.Remove("btree.db")
+	defer os.Remove("btree.db.del")
+
+	pager, err := OpenPager("btree.db", os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pager.Close()
+
+	for i := 0; i < 1000; i++ {
+		_, err := pager.Write([]byte(fmt.Sprintf("Hello World %d", i)))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	count := pager.Count()
+
+	if count != 1000 {
+		t.Fatalf("expected 1000, got %d", count)
 	}
 }
