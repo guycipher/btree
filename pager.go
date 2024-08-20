@@ -26,8 +26,8 @@ import (
 	"sync"
 )
 
-const PAGE_SIZE = 1024  // Page size
-const HEADER_SIZE = 256 // next (overflowed), deleted
+const PAGE_SIZE = 1024 * 4 // Page size
+const HEADER_SIZE = 256    // next (overflowed), deleted
 
 // Pager manages pages in a file
 type Pager struct {
@@ -122,7 +122,7 @@ func readDelPages(file *os.File) ([]int64, error) {
 		// convert the string to int64
 		page, err := strconv.ParseInt(pageStr, 10, 64)
 		if err != nil {
-			return nil, err
+			continue
 		}
 
 		pages = append(pages, page)

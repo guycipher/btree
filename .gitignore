@@ -22,4 +22,5 @@ go.work
 go.work.sum
 
 .idea
-test.db
+btree.db
+btree.db.del
