@@ -22,7 +22,7 @@ You can use the ``Open`` method to open an existing btree or create a new one.
 You can specify the file, permission and T(degree)
 ```
 // name of the file, flags, file mode, T(degree)
-bt, err := Open("btree.db", os.O_CREATE|os.O_RDWR, 0644, 3)
+bt, err := btree.Open("btree.db", os.O_CREATE|os.O_RDWR, 0644, 3)
 if err != nil {
 ..
 }
