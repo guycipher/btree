@@ -1,651 +1,236 @@
 // Package btree
-// An embedded concurrent, disk based, BTree implementation
-// Copyright (C) 2024 Alex Gaetano Padula
+// BTree implementation tests
+// Copyright (C) Alex Gaetano Padula
 //
-// This program is free software: you can redistribute it and/or modify it
-// under the terms of the GNU General Public License as published by the Free
-// Software Foundation, either version 3 of the License, or (at your option)
-// any later version.
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
 //
-// This program is distributed in the hope that it will be useful, but WITHOUT
-// ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or
-// FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
-// more details.
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
 //
-// You should have received a copy of the GNU General Public License along with
-// this program.  If not, see <http://www.gnu.org/licenses/>.
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package btree
 
 import (
 	"fmt"
 	"log"
-	"math/rand"
 	"os"
-	"sync"
+	"strconv"
 	"testing"
 )
 
-// Test open, duh!
-// We are testing Close as well no point to write another test for that specifically
 func TestOpen(t *testing.T) {
-	defer os.Remove("test.db")
-	bt, err := Open("test.db", 0644, 3)
+	defer os.Remove("btree.db")
+	defer os.Remove("btree.db.del")
+
+	btree, err := Open("btree.db", os.O_CREATE|os.O_RDWR, 0644, 3)
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 
-	if bt == nil {
-		t.Error("expected bt to not be nil")
-		return
-	}
+	defer btree.Close()
 
-	if bt.File == nil {
-		t.Error("expected bt.File to not be nil")
-		return
-	}
+	// check for btree.db and btree.db.del files
 
-	err = bt.Close()
+	_, err = os.Stat("btree.db")
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
+	}
+
+	_, err = os.Stat("btree.db.del")
+	if err != nil {
+		t.Fatal(err)
 	}
 
 }
 
-func TestEncodeNode(t *testing.T) {
-	n := &Node{
-		Page: 1,
-	}
+func TestBTree_Close(t *testing.T) {
+	defer os.Remove("btree.db")
+	defer os.Remove("btree.db.del")
 
-	_, err := encodeNode(n)
+	btree, err := Open("btree.db", os.O_CREATE|os.O_RDWR, 0644, 3)
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 
-	// make a large node exceeding PAGE_SIZE
-	n = &Node{
-		Page: 1,
-		Keys: make([]*Key, 0),
+	err = btree.Close()
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	for i := 0; i < 1000; i++ {
-		n.Keys = append(n.Keys, &Key{
-			K: i,
-			V: []interface{}{i},
-		})
-	}
+	// check for btree.db and btree.db.del files
 
-	_, err = encodeNode(n)
+	_, err = os.Stat("btree.db")
 	if err == nil {
-		t.Error("expected error")
-		return
+		t.Fatal("expected error, got nil")
 	}
 
-	if err.Error() != "node too large to encode" {
-		t.Error("unexpected error: " + err.Error())
-		return
+	_, err = os.Stat("btree.db.del")
+	if err == nil {
+		t.Fatal("expected error, got nil")
 	}
-
-}
-
-func TestDecodeNode(t *testing.T) {
-	n := &Node{
-		Page: 1,
-	}
-
-	b, err := encodeNode(n)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	nn, err := decodeNode(b)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	if nn.Page != n.Page {
-		t.Error("expected page to be equal")
-		return
-	}
-
-}
-
-func TestGetPageLock(t *testing.T) {
-	defer os.Remove("test.db")
-	bt, err := Open("test.db", 0644, 3)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	defer bt.Close()
-
-	mu := bt.getPageLock(1)
-
-	if mu == nil {
-		t.Error("expected mu to not be nil")
-		return
-	}
-
-	mu.Lock()
-	mu.Unlock()
-
-}
-
-func TestGetPage(t *testing.T) {
-	defer os.Remove("test.db")
-	bt, err := Open("test.db", 0644, 3)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	defer bt.Close()
-
-	// Create new page
-	pgN, err := bt.newPageNumber()
-	if err != nil {
-		t.Error(err)
-		return
-
-	}
-
-	// Write page
-	n := &Node{
-		Page: pgN,
-	}
-
-	_, err = bt.writePage(n)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	_, err = bt.getPage(0)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	// Create new page
-	pgN, err = bt.newPageNumber()
-	if err != nil {
-		t.Error(err)
-		return
-
-	}
-
-	// Write page
-	n = &Node{
-		Page: pgN,
-	}
-
-	_, err = bt.writePage(n)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	_, err = bt.getPage(1)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
 }
 
 func TestBTree_Put(t *testing.T) {
-	defer os.Remove("test.db")
-	bt, err := Open("test.db", 0644, 3)
+	defer os.Remove("btree.db")
+	defer os.Remove("btree.db.del")
+
+	btree, err := Open("btree.db", os.O_CREATE|os.O_RDWR, 0644, 3)
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 
-	defer bt.Close()
+	defer btree.Close()
 
-	for i := 0; i < 100; i++ {
-		err := bt.Put(i, i)
+	for i := 0; i < 500; i++ {
+
+		err := btree.Put([]byte(strconv.Itoa(i)), []byte(strconv.Itoa(i)))
 		if err != nil {
-			t.Error(err)
-			return
+			t.Fatal(err)
+		}
+
+	}
+
+	//btree.PrintTree()
+
+	for i := 0; i < 500; i++ {
+		key, err := btree.Get([]byte(strconv.Itoa(i)))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if key == nil {
+			t.Fatalf("expected true, got false")
 		}
 	}
-}
-
-func TestBTree_Put2(t *testing.T) {
-	defer os.Remove("test.db")
-	bt, err := Open("test.db", 0644, 3)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	defer bt.Close()
-
-	get, err := bt.Get(1)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	log.Println(get)
 }
 
 func TestBTree_Delete(t *testing.T) {
-	defer os.Remove("test.db")
-	bt, err := Open("test.db", 0644, 3)
+	defer os.Remove("btree.db")
+	defer os.Remove("btree.db.del")
+
+	btree, err := Open("btree.db", os.O_CREATE|os.O_RDWR, 0644, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Close
-	defer bt.Close()
+	defer btree.Close()
 
-	// Put
-	for i := 1; i < 100; i++ {
-		err := bt.Put(i, fmt.Sprintf("value-%d", i))
+	for i := 0; i < 500; i++ {
+
+		err := btree.Put([]byte(strconv.Itoa(i)), []byte(strconv.Itoa(i)))
 		if err != nil {
 			t.Fatal(err)
 		}
+
 	}
 
-	// Delete
-	for i := 1; i < 100; i++ {
-		err := bt.Delete(i)
+	//btree.PrintTree()
+
+	for i := 0; i < 500; i++ {
+		err := btree.Delete([]byte(strconv.Itoa(i)))
 		if err != nil {
 			t.Fatal(err)
 		}
-	}
-}
 
-func TestBTree_Delete2(t *testing.T) {
-	defer os.Remove("test.db")
-	bt, err := Open("test.db", 0644, 3)
-	if err != nil {
-		t.Fatal(err)
-	}
+		log.Println("Deleted key", i)
 
-	// Close
-	defer bt.Close()
-
-	// Put
-	for i := 1; i < 2; i++ {
-		for j := 1; j < 77; j++ {
-			err := bt.Put(i, fmt.Sprintf("value-%d", j))
-			if err != nil {
-				t.Fatal(err)
-			}
-
-		}
-	}
-
-	// Delete
-	for i := 1; i < 2; i++ {
-		err := bt.Delete(i)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-}
-
-func TestBTree_Delete3(t *testing.T) {
-	defer os.Remove("test.db")
-	bt, err := Open("test.db", 0644, 3)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Close
-	defer bt.Close()
-
-	// Put
-	for i := 1; i < 100; i++ {
-		bt.Put(i, fmt.Sprintf("value-%d", i))
-	}
-
-	// random from 1 to 100
-	n := 1 + rand.Intn(100)
-
-	// Delete
-	err = bt.Delete(n)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Get
-	values, err := bt.Get(n)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(values) != 0 {
-		t.Fatal("Value not deleted")
-	}
-
-}
-
-func TestBTree_Delete4(t *testing.T) {
-	// test delete value
-	defer os.Remove("test.db")
-
-	bt, err := Open("test.db", 0644, 3)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Close
-	defer bt.Close()
-
-	// Put
-	for i := 1; i < 200; i++ {
-		bt.Put(123, fmt.Sprintf("value-%d", i))
-	}
-
-	// Delete
-	err = bt.Remove(123, "value-121")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Get
-	values, err := bt.Get(123)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// check for all values and make sure value-121 is not there
-	for _, value := range values {
-		if value == "value-121" {
-			t.Fatal("Value not deleted")
-		}
-	}
-
-}
-
-func TestIterator(t *testing.T) {
-	defer os.Remove("test.db")
-
-	bt, err := Open("test.db", 0644, 3)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Close
-	defer bt.Close()
-
-	// Put
-	for i := 1; i < 20; i++ {
-		for j := 1; j < 60; j++ {
-			err := bt.Put(i, fmt.Sprintf("value-%d", j))
-			if err != nil {
-				t.Fatal(err)
-			}
-
-		}
-	}
-
-	// Iterate
-	it, err := bt.NewIteratorFromKey(12)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var got []interface{}
-
-	for {
-		value, err := it.Next()
-		if err != nil {
-			break
-		}
-
-		got = append(got, value)
-
-	}
-
-	if len(got) != 59 {
-		t.Fatal("Expected 59 values")
-	}
-
-	for i := 1; i < 60; i++ {
-		if got[i-1] != fmt.Sprintf("value-%d", i) {
-			t.Fatal("Value mismatch")
+		key, err := btree.Get([]byte(strconv.Itoa(i)))
+		if key != nil {
+			t.Fatalf("expected key to be nil")
 		}
 	}
 }
 
 func TestBTree_Range(t *testing.T) {
-	defer os.Remove("test.db")
+	defer os.Remove("btree.db")
+	defer os.Remove("btree.db.del")
 
-	bt, err := Open("test.db", 0644, 3)
+	btree, err := Open("btree.db", os.O_CREATE|os.O_RDWR, 0644, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Close
-	defer bt.Close()
+	defer btree.Close()
 
-	// Put
-	for i := 1; i < 20; i++ {
-		for j := 1; j < 50; j++ {
-			err := bt.Put(i, fmt.Sprintf("value-%d", j))
-			if err != nil {
-				t.Fatal(err)
-			}
-
+	for i := 0; i < 500; i++ {
+		key := fmt.Sprintf("%03d", i) // pad the key with leading zeros
+		err := btree.Put([]byte(key), []byte(key))
+		if err != nil {
+			t.Fatal(err)
 		}
 	}
 
-	// Range
-	keys, err := bt.Range(12, 16)
+	keys, err := btree.Range([]byte("010"), []byte("020")) // use padded keys
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	expectedKeys := []int{12, 13, 14, 15, 16}
-
-	for i, key := range keys {
-		_, ok := key.(*Key)
-		if !ok {
-			t.Fatal("not of type *Key")
-		} else {
-
-			if key.(*Key).K != expectedKeys[i] {
-				t.Fatal(err)
-			}
-
-			overflow, err := bt.GetKeyOverflow(key.(*Key).K)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			// overflow should have values 1 to 49
-			for j := 1; j < 50; j++ {
-				if overflow[j-1] != fmt.Sprintf("value-%d", j) {
-					t.Fatal(err)
-				}
-			}
-		}
+	if len(keys) != 11 {
+		t.Fatalf("expected 11 keys, got %d", len(keys))
 	}
 
 }
 
-func TestBTree_Get(t *testing.T) {
-	defer os.Remove("test.db")
+func TestBTree_Remove(t *testing.T) {
+	defer os.Remove("btree.db")
+	defer os.Remove("btree.db.del")
 
-	bt, err := Open("test.db", 0644, 3)
+	btree, err := Open("btree.db", os.O_CREATE|os.O_RDWR, 0644, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Close
-	defer bt.Close()
+	defer btree.Close()
 
-	// Put
-	for i := 1; i < 20; i++ {
-		for j := 1; j < 50; j++ {
-			err := bt.Put(i, fmt.Sprintf("value-%d", j))
-			if err != nil {
-				t.Fatal(err)
-			}
+	// put 100 values into a key
 
+	for i := 0; i < 100; i++ {
+		err := btree.Put([]byte("key"), []byte(strconv.Itoa(i)))
+		if err != nil {
+			t.Fatal(err)
 		}
 	}
 
-	// Get
-	values, err := bt.Get(12)
+	// remove 50 values from the key
+	for i := 0; i < 50; i++ {
+		err := btree.Remove([]byte("key"), []byte(strconv.Itoa(i)))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// get the key
+	key, err := btree.Get([]byte("key"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(values) != 49 {
-		t.Fatal("Expected 49 values")
-	}
-
-	for i := 1; i < 50; i++ {
-		if values[i-1] != fmt.Sprintf("value-%d", i) {
-			t.Fatal("Value mismatch")
-		}
+	if len(key.V) != 50 {
+		t.Fatalf("expected 50 keys, got %d", len(key.V))
 	}
 }
 
-func TestBTree_Get2(t *testing.T) {
-	defer os.Remove("test.db")
+func BenchmarkBTree_Put(b *testing.B) {
+	defer os.Remove("btree.db")
+	defer os.Remove("btree.db.del")
 
-	bt, err := Open("test.db", 0644, 3)
+	btree, err := Open("btree.db", os.O_CREATE|os.O_RDWR, 0644, 3)
 	if err != nil {
-		t.Fatal(err)
+		b.Fatal(err)
 	}
 
-	// Close
-	defer bt.Close()
+	defer btree.Close()
 
-	// Put
-	for i := 1; i < 20; i++ {
-
-		err := bt.Put(i, fmt.Sprintf("value-%d", i))
+	for i := 0; i < b.N; i++ {
+		err := btree.Put([]byte(strconv.Itoa(i)), []byte(strconv.Itoa(i)))
 		if err != nil {
-			t.Fatal(err)
-		}
-
-	}
-
-	for i := 1; i < 20; i++ {
-		values, err := bt.Get(i)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if len(values) != 1 {
-			t.Fatal("Expected 1 value")
-		}
-
-		if values[0] != fmt.Sprintf("value-%d", i) {
-			t.Fatal("Value mismatch")
+			b.Fatal(err)
 		}
 	}
-}
-
-func TestPutMultipleValuesManyKeys(t *testing.T) {
-	defer os.Remove("test.db")
-
-	bt, err := Open("test.db", 0644, 3)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Close
-	defer bt.Close()
-
-	for i := 1; i < 100; i++ {
-		for j := 1; j < 100; j++ {
-			err := bt.Put(i, fmt.Sprintf("value-%d", j))
-			if err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
-
-	for i := 1; i < 100; i++ {
-		values, err := bt.Get(i)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if len(values) != 99 {
-			t.Fatal("Expected 99 values", values)
-		}
-
-		for j := 1; j < 100; j++ {
-			if values[j-1] != fmt.Sprintf("value-%d", j) {
-				t.Fatal("Value mismatch")
-			}
-		}
-	}
-
-}
-
-// FAILs SOMETIMES currently, need's investigating
-// panic: runtime error: slice bounds out of range [3:1]
-//goroutine 8 [running]:
-//github.com/guycipher/btree.(*BTree).splitChild(0xc0000a4d20, 0xc00039c9c0, 0x0, 0xc00039c6c0)
-///home/agpmastersystem/btree/btree.go:267 +0x6d2
-//github.com/guycipher/btree.(*BTree).splitRoot(0xc0000a4d20)
-///home/agpmastersystem/btree/btree.go:238 +0x172
-//github.com/guycipher/btree.(*BTree).Put(0xc0000a4d20, {0x56ef60, 0x6d3140}, {0x56ed20, 0xc00019c250})
-///home/agpmastersystem/btree/btree.go:326 +0xc5
-//github.com/guycipher/btree.TestConcurrentPut.func1(0x0?)
-///home/agpmastersystem/btree/btree_test.go:615 +0x111
-//created by github.com/guycipher/btree.TestConcurrentPut in goroutine 6
-///home/agpmastersystem/btree/btree_test.go:612 +0xe9
-
-// I believe it to be something to do with the page locking functionality.
-func TestConcurrentPut(t *testing.T) {
-	defer os.Remove("test.db")
-
-	bt, err := Open("test.db", 0644, 3)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Close
-	defer bt.Close()
-
-	wg := &sync.WaitGroup{}
-
-	for i := 1; i < 5; i++ {
-
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			for j := 1; j < 100; j++ {
-				err := bt.Put(j, fmt.Sprintf("value-%d", j))
-				if err != nil {
-					t.Fatal(err)
-					return // stop the test
-				}
-
-			}
-		}(i)
-
-	}
-
-	wg.Wait()
-
-	for i := 1; i < 100; i++ {
-		values, err := bt.Get(i)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if len(values) <= 0 {
-			t.Fatal("Expected values")
-		}
-	}
-
 }
