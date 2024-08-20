@@ -7,7 +7,6 @@ A fast, simple persistent BTree implementation in Go.
 - Supports keys with multiple values
 - Supports large keys and values
 
-### **not thread safe**
 > [!WARNING]
 > Not thread safe.  You must handle concurrency control yourself.
 
