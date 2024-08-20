@@ -24,33 +24,6 @@ import (
 	"testing"
 )
 
-//func TestBTree_Put2(t *testing.T) {
-//	//defer os.Remove("btree.db")
-//	//defer os.Remove("btree.db.del")
-//
-//	btree, err := Open("btree.db", os.O_CREATE|os.O_RDWR, 0644, 3)
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	defer btree.Close()
-//
-//	//for i := 0; i < 100000; i++ {
-//	//	err := btree.Put([]byte("key"+strconv.Itoa(i)), []byte("value"+strconv.Itoa(i)))
-//	//	if err != nil {
-//	//		t.Fatal(err)
-//	//	}
-//	//}
-//
-//	key, err := btree.Get([]byte("key84433"))
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	log.Println(key.V)
-//
-//}
-
 func TestOpen(t *testing.T) {
 	defer os.Remove("btree.db")
 	defer os.Remove("btree.db.del")
