@@ -1,6 +1,8 @@
 # GO BTree
 A fast, simple persistent BTree implementation in Go.
 
+https://pkg.go.dev/github.com/guycipher/btree
+
 ## Features
 - Easy to use API with Put, Get, Delete, Remove, Iterator, Range methods
 - Disk based storage
