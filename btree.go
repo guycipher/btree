@@ -921,6 +921,7 @@ func (b *BTree) findNodeForKey(x *Node, key []byte) (*Node, int, error) {
 	return nil, 0, errors.New("key not found")
 }
 
+// Iterator returns an iterator for a key
 func (k *Key) Iterator() func() ([]byte, bool) {
 	index := 0
 	return func() ([]byte, bool) {
