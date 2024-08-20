@@ -69,6 +69,7 @@ func (b *BTree) Close() error {
 	return b.Pager.Close()
 }
 
+// encodeNode encodes a node into a byte slice
 func encodeNode(n *Node) ([]byte, error) {
 	// Create a new msgpack handle
 	handle := new(codec.MsgpackHandle)
@@ -83,6 +84,7 @@ func encodeNode(n *Node) ([]byte, error) {
 	return encoded, nil
 }
 
+// newBTreeNode creates a new BTree node
 func (b *BTree) newBTreeNode(leaf bool) (*Node, error) {
 	var err error
 
