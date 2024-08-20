@@ -405,3 +405,8 @@ func (p *Pager) DeletePage(pageID int64) error {
 
 	return nil
 }
+
+func (p *Pager) Count() int64 {
+	stat, _ := p.file.Stat()
+	return stat.Size() / (PAGE_SIZE + HEADER_SIZE)
+}
