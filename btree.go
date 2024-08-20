@@ -381,7 +381,9 @@ func (b *BTree) insertNonFull(x *Node, key []byte, value []byte) error {
 				j--
 			}
 
-			x.Keys[j] = &Key{K: key}
+			values := make([][]byte, 0)
+			values = append(values, value)
+			x.Keys[j] = &Key{K: key, V: values}
 
 		}
 
