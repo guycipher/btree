@@ -1004,6 +1004,7 @@ func (b *BTree) rangeKeys(start, end []byte, x *Node) ([]interface{}, error) {
 	return keys, nil
 }
 
+// removeNilFromKeys removes nil keys from a slice of keys
 func removeNilFromKeys(keys []*Key) []*Key {
 	newKeys := make([]*Key, 0)
 	for _, key := range keys {

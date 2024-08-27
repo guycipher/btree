@@ -18,7 +18,6 @@ package btree
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"testing"
@@ -126,9 +125,6 @@ func TestBTree_Delete(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		log.Println("Deleted key", i)
-
 		key, err := btree.Get([]byte(strconv.Itoa(i)))
 		if key != nil {
 			t.Fatalf("expected key to be nil")
