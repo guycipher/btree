@@ -112,3 +112,18 @@ if err != nil {
 ..
 }
 ```
+
+## Technical Details
+This is an on disk btree implementation.  This btree has an underlying pager that handles reading and writing nodes to disk as well as overflows.
+When an overflow is required for a page the overflow is created and the data is split between however many pages.
+When a page gets deleted its page number gets placed into an in-memory slice as well as gets written to disk. These deleted pages are reused when new pages are needed.
+
+A key on this btree can store many values.  Mind you a keys values are read into memory; So if you have a key like A with values Alex, Alice, Adam, and you call Get(A) all of those values will be read into memory.
+You can use a key iterator to iterate over the values of a key.
+
+The btree is not thread safe.  You must handle concurrency control yourself.
+
+You can play with page size and degree(T) to see how it affects performance.  My recommendation is a smaller page size and smaller degree for faster reads and writes.
+
+## License
+View the [LICENSE](LICENSE) file
