@@ -939,6 +939,64 @@ func (k *Key) Iterator() func() ([]byte, bool) {
 	}
 }
 
+// NRange returns all keys not within the range [start, end]
+func (b *BTree) NRange(start, end []byte) ([]*Key, error) {
+	root, err := b.getRoot()
+	if err != nil {
+		return nil, err
+	}
+
+	return b.nrange(root, start, end)
+}
+
+// nrange returns all keys not within the range [start, end]
+// nrange returns all keys not within the range [start, end]
+func (b *BTree) nrange(x *Node, start, end []byte) ([]*Key, error) {
+	keys := make([]*Key, 0)
+	if x != nil {
+		for i := 0; i < len(x.Keys); i++ {
+			if !x.Leaf {
+				childBytes, err := b.Pager.GetPage(x.Children[i])
+				if err != nil {
+					return nil, err
+				}
+
+				child, err := decodeNode(childBytes)
+				if err != nil {
+					return nil, err
+				}
+
+				childKeys, err := b.nrange(child, start, end)
+				if err != nil {
+					return nil, err
+				}
+				keys = append(keys, childKeys...)
+			}
+			if lessThan(x.Keys[i].K, start) || greaterThan(x.Keys[i].K, end) {
+				keys = append(keys, x.Keys[i])
+			}
+		}
+		if !x.Leaf {
+			childBytes, err := b.Pager.GetPage(x.Children[len(x.Children)-1])
+			if err != nil {
+				return nil, err
+			}
+
+			child, err := decodeNode(childBytes)
+			if err != nil {
+				return nil, err
+			}
+
+			childKeys, err := b.nrange(child, start, end)
+			if err != nil {
+				return nil, err
+			}
+			keys = append(keys, childKeys...)
+		}
+	}
+	return keys, nil
+}
+
 // Range returns all keys in the BTree that are within the range [start, end]
 func (b *BTree) Range(start, end []byte) ([]interface{}, error) {
 	root, err := b.getRoot()

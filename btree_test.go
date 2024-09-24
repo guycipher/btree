@@ -299,6 +299,38 @@ func TestBTree_GreaterThan(t *testing.T) {
 	}
 }
 
+func TestBTree_NRange(t *testing.T) {
+
+	defer os.Remove("btree.db")
+	defer os.Remove("btree.db.del")
+
+	btree, err := Open("btree.db", os.O_CREATE|os.O_RDWR, 0644, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer btree.Close()
+
+	for i := 0; i < 500; i++ {
+		key := fmt.Sprintf("%03d", i) // pad the key with leading zeros
+		err := btree.Put([]byte(key), []byte(key))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	keys, err := btree.NRange([]byte("010"), []byte("020")) // use padded keys
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Expect 489 keys
+	if len(keys) != 489 {
+		t.Fatalf("expected 489 keys, got %d", len(keys))
+
+	}
+}
+
 func TestBTree_LessThan(t *testing.T) {
 	defer os.Remove("btree.db")
 	defer os.Remove("btree.db.del")
