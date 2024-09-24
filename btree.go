@@ -493,6 +493,7 @@ func (b *BTree) PrintTree() error {
 	return nil
 }
 
+// printTree prints the tree (for debugging purposes ****)
 func (b *BTree) printTree(node *Node, indent string, last bool) error {
 	fmt.Print(indent)
 	if last {
@@ -784,6 +785,7 @@ func (b *BTree) deleteRecursive(x *Node, k []byte) error {
 	return nil
 }
 
+// findPredecessor finds the predecessor of a node
 func (b *BTree) findPredecessor(x *Node, i int) (*Key, error) {
 
 	curBytes, err := b.Pager.GetPage(x.Children[i])
@@ -826,6 +828,7 @@ func (b *BTree) findPredecessor(x *Node, i int) (*Key, error) {
 	return cur.Keys[len(cur.Keys)-1], nil
 }
 
+// mergeNodes merges two nodes
 func (b *BTree) mergeNodes(x *Node, i int) error {
 
 	if len(x.Children) == i+1 {
@@ -1013,4 +1016,238 @@ func removeNilFromKeys(keys []*Key) []*Key {
 		}
 	}
 	return newKeys
+}
+
+// NGet gets all keys not equal to k
+func (b *BTree) NGet(k []byte) ([]*Key, error) {
+	root, err := b.getRoot()
+	if err != nil {
+		return nil, err
+	}
+
+	return b.nget(root, k)
+}
+
+// nget gets all keys not equal to k
+func (b *BTree) nget(x *Node, k []byte) ([]*Key, error) {
+	keys := make([]*Key, 0)
+	if x != nil {
+		i := 0
+		for i < len(x.Keys) && notEq(x.Keys[i].K, k) {
+			if !x.Leaf {
+				childBytes, err := b.Pager.GetPage(x.Children[i])
+				if err != nil {
+					return nil, err
+				}
+
+				child, err := decodeNode(childBytes)
+				if err != nil {
+					return nil, err
+				}
+
+				childKeys, err := b.nget(child, k)
+				if err != nil {
+					return nil, err
+				}
+				keys = append(keys, childKeys...)
+			}
+			keys = append(keys, x.Keys[i])
+			i++
+		}
+		if !x.Leaf && i < len(x.Children) {
+			childBytes, err := b.Pager.GetPage(x.Children[i])
+			if err != nil {
+				return nil, err
+			}
+
+			child, err := decodeNode(childBytes)
+			if err != nil {
+				return nil, err
+			}
+
+			childKeys, err := b.nget(child, k)
+			if err != nil {
+				return nil, err
+			}
+			keys = append(keys, childKeys...)
+		}
+	}
+	return keys, nil
+
+}
+
+// InOrderTraversal returns all keys in the BTree in order
+func (b *BTree) InOrderTraversal() ([]*Key, error) {
+	root, err := b.getRoot()
+	if err != nil {
+		return nil, err
+	}
+
+	return b.inOrderTraversal(root)
+}
+
+// inOrderTraversal returns all keys in the BTree in order
+func (b *BTree) inOrderTraversal(x *Node) ([]*Key, error) {
+	keys := make([]*Key, 0)
+	if x != nil {
+		i := 0
+		for i < len(x.Keys) {
+			if !x.Leaf {
+				childBytes, err := b.Pager.GetPage(x.Children[i])
+				if err != nil {
+					return nil, err
+				}
+
+				child, err := decodeNode(childBytes)
+				if err != nil {
+					return nil, err
+				}
+
+				childKeys, err := b.inOrderTraversal(child)
+				if err != nil {
+					return nil, err
+				}
+				keys = append(keys, childKeys...)
+			}
+			keys = append(keys, x.Keys[i])
+			i++
+		}
+		if !x.Leaf && i < len(x.Children) {
+			childBytes, err := b.Pager.GetPage(x.Children[i])
+			if err != nil {
+				return nil, err
+			}
+
+			child, err := decodeNode(childBytes)
+			if err != nil {
+				return nil, err
+			}
+
+			childKeys, err := b.inOrderTraversal(child)
+			if err != nil {
+				return nil, err
+			}
+			keys = append(keys, childKeys...)
+		}
+	}
+	return keys, nil
+}
+
+// LessThan returns all keys less than k
+func (b *BTree) LessThan(k []byte) ([]*Key, error) {
+	root, err := b.getRoot()
+	if err != nil {
+		return nil, err
+	}
+
+	return b.lessThan(root, k)
+}
+
+// lessThan returns all keys less than k
+func (b *BTree) lessThan(x *Node, k []byte) ([]*Key, error) {
+	keys := make([]*Key, 0)
+	if x != nil {
+		i := 0
+		for i < len(x.Keys) && lessThan(x.Keys[i].K, k) {
+			if !x.Leaf {
+				childBytes, err := b.Pager.GetPage(x.Children[i])
+				if err != nil {
+					return nil, err
+				}
+
+				child, err := decodeNode(childBytes)
+				if err != nil {
+					return nil, err
+				}
+
+				childKeys, err := b.lessThan(child, k)
+				if err != nil {
+					return nil, err
+				}
+				keys = append(keys, childKeys...)
+			}
+			keys = append(keys, x.Keys[i])
+			i++
+		}
+		if !x.Leaf && i < len(x.Children) {
+			childBytes, err := b.Pager.GetPage(x.Children[i])
+			if err != nil {
+				return nil, err
+			}
+
+			child, err := decodeNode(childBytes)
+			if err != nil {
+				return nil, err
+			}
+
+			childKeys, err := b.lessThan(child, k)
+			if err != nil {
+				return nil, err
+			}
+			keys = append(keys, childKeys...)
+		}
+	}
+	return keys, nil
+
+}
+
+// GreaterThan returns all keys greater than k
+func (b *BTree) GreaterThan(k []byte) ([]*Key, error) {
+	root, err := b.getRoot()
+	if err != nil {
+		return nil, err
+	}
+
+	return b.greaterThan(root, k)
+}
+
+// greaterThan returns all keys greater than k
+func (b *BTree) greaterThan(x *Node, k []byte) ([]*Key, error) {
+	keys := make([]*Key, 0)
+	if x != nil {
+		i := 0
+		for i < len(x.Keys) && lessThanEq(x.Keys[i].K, k) {
+			i++
+		}
+		for i < len(x.Keys) {
+			if !x.Leaf {
+				childBytes, err := b.Pager.GetPage(x.Children[i])
+				if err != nil {
+					return nil, err
+				}
+
+				child, err := decodeNode(childBytes)
+				if err != nil {
+					return nil, err
+				}
+
+				childKeys, err := b.greaterThan(child, k)
+				if err != nil {
+					return nil, err
+				}
+				keys = append(keys, childKeys...)
+			}
+			keys = append(keys, x.Keys[i])
+			i++
+		}
+		if !x.Leaf && i < len(x.Children) {
+			childBytes, err := b.Pager.GetPage(x.Children[i])
+			if err != nil {
+				return nil, err
+			}
+
+			child, err := decodeNode(childBytes)
+			if err != nil {
+				return nil, err
+			}
+
+			childKeys, err := b.greaterThan(child, k)
+			if err != nil {
+				return nil, err
+			}
+			keys = append(keys, childKeys...)
+		}
+	}
+	return keys, nil
+
 }
