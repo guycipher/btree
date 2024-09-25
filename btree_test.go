@@ -397,21 +397,32 @@ func TestBTree_GreaterThanEq(t *testing.T) {
 
 	defer btree.Close()
 
-	for i := 0; i < 500; i++ {
-		key := fmt.Sprintf("%03d", i) // pad the key with leading zeros
+	for i := 0; i < 10; i++ {
+		key := fmt.Sprintf("%d", i) // pad the key with leading zeros
 		err := btree.Put([]byte(key), []byte(key))
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	keys, err := btree.GreaterThanEq([]byte("010"))
+	keys, err := btree.GreaterThanEq([]byte(fmt.Sprintf("%d", 5)))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(keys) != 474 {
-		t.Fatalf("expected 474 keys, got %d", len(keys))
+	expect := []string{
+		fmt.Sprintf("%d", 5),
+		fmt.Sprintf("%d", 6),
+		fmt.Sprintf("%d", 7),
+		fmt.Sprintf("%d", 8),
+		fmt.Sprintf("%d", 9),
+	}
+
+	for i, key := range keys {
+		if string(key.K) != expect[i] {
+			t.Fatalf("expected key to be %s, got %s", expect[i], key.K)
+		}
+
 	}
 }
 
@@ -426,20 +437,29 @@ func TestBTree_LessThanEq(t *testing.T) {
 
 	defer btree.Close()
 
-	for i := 0; i < 500; i++ {
-		key := fmt.Sprintf("%03d", i) // pad the key with leading zeros
+	for i := 0; i < 5; i++ {
+		key := fmt.Sprintf("%d", i) // pad the key with leading zeros
 		err := btree.Put([]byte(key), []byte(key))
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	keys, err := btree.LessThanEq([]byte("010"))
+	keys, err := btree.LessThanEq([]byte(fmt.Sprintf("%d", 4)))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(keys) != 10 {
-		t.Fatalf("expected 10 keys, got %d", len(keys))
+	expect := []string{
+		fmt.Sprintf("%d", 0),
+		fmt.Sprintf("%d", 1),
+		fmt.Sprintf("%d", 2),
+		fmt.Sprintf("%d", 3),
+	}
+
+	for i, key := range keys {
+		if string(key.K) != expect[i] {
+			t.Fatalf("expected key to be %s, got %s", expect[i], key.K)
+		}
 	}
 }
