@@ -1309,3 +1309,118 @@ func (b *BTree) greaterThan(x *Node, k []byte) ([]*Key, error) {
 	return keys, nil
 
 }
+
+// LessThanEq returns all keys less than or equal to k
+func (b *BTree) LessThanEq(k []byte) ([]*Key, error) {
+	root, err := b.getRoot()
+	if err != nil {
+		return nil, err
+	}
+
+	return b.lessThanEq(root, k)
+}
+
+// lessThanEq returns all keys less than or equal to k
+func (b *BTree) lessThanEq(x *Node, k []byte) ([]*Key, error) {
+	keys := make([]*Key, 0)
+	if x != nil {
+		i := 0
+		for i < len(x.Keys) && lessThan(x.Keys[i].K, k) {
+			if !x.Leaf {
+				childBytes, err := b.Pager.GetPage(x.Children[i])
+				if err != nil {
+					return nil, err
+				}
+
+				child, err := decodeNode(childBytes)
+				if err != nil {
+					return nil, err
+				}
+
+				childKeys, err := b.lessThanEq(child, k)
+				if err != nil {
+					return nil, err
+				}
+				keys = append(keys, childKeys...)
+			}
+			keys = append(keys, x.Keys[i])
+			i++
+		}
+		if !x.Leaf && i < len(x.Children) {
+			childBytes, err := b.Pager.GetPage(x.Children[i])
+			if err != nil {
+				return nil, err
+			}
+
+			child, err := decodeNode(childBytes)
+			if err != nil {
+				return nil, err
+			}
+
+			childKeys, err := b.lessThanEq(child, k)
+			if err != nil {
+				return nil, err
+			}
+			keys = append(keys, childKeys...)
+		}
+	}
+	return keys, nil
+
+}
+
+// GreaterThanEq returns all keys greater than or equal to k
+func (b *BTree) GreaterThanEq(k []byte) ([]*Key, error) {
+	root, err := b.getRoot()
+	if err != nil {
+		return nil, err
+	}
+
+	return b.greaterThanEq(root, k)
+}
+
+// greaterThanEq returns all keys greater than or equal to k
+func (b *BTree) greaterThanEq(x *Node, k []byte) ([]*Key, error) {
+	keys := make([]*Key, 0)
+	if x != nil {
+		i := 0
+		for i < len(x.Keys) && lessThan(k, x.Keys[i].K) {
+			if !x.Leaf {
+				childBytes, err := b.Pager.GetPage(x.Children[i])
+				if err != nil {
+					return nil, err
+				}
+
+				child, err := decodeNode(childBytes)
+				if err != nil {
+					return nil, err
+				}
+
+				childKeys, err := b.greaterThanEq(child, k)
+				if err != nil {
+					return nil, err
+				}
+				keys = append(keys, childKeys...)
+			}
+			keys = append(keys, x.Keys[i])
+			i++
+		}
+		if !x.Leaf && i < len(x.Children) {
+			childBytes, err := b.Pager.GetPage(x.Children[i])
+			if err != nil {
+				return nil, err
+			}
+
+			child, err := decodeNode(childBytes)
+			if err != nil {
+				return nil, err
+			}
+
+			childKeys, err := b.greaterThanEq(child, k)
+			if err != nil {
+				return nil, err
+			}
+			keys = append(keys, childKeys...)
+		}
+	}
+	return keys, nil
+}
