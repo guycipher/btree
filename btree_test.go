@@ -385,3 +385,61 @@ func BenchmarkBTree_Put(b *testing.B) {
 		}
 	}
 }
+
+func TestBTree_GreaterThanEq(t *testing.T) {
+	defer os.Remove("btree.db")
+	defer os.Remove("btree.db.del")
+
+	btree, err := Open("btree.db", os.O_CREATE|os.O_RDWR, 0644, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer btree.Close()
+
+	for i := 0; i < 500; i++ {
+		key := fmt.Sprintf("%03d", i) // pad the key with leading zeros
+		err := btree.Put([]byte(key), []byte(key))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	keys, err := btree.GreaterThanEq([]byte("010"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(keys) != 474 {
+		t.Fatalf("expected 474 keys, got %d", len(keys))
+	}
+}
+
+func TestBTree_LessThanEq(t *testing.T) {
+	defer os.Remove("btree.db")
+	defer os.Remove("btree.db.del")
+
+	btree, err := Open("btree.db", os.O_CREATE|os.O_RDWR, 0644, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer btree.Close()
+
+	for i := 0; i < 500; i++ {
+		key := fmt.Sprintf("%03d", i) // pad the key with leading zeros
+		err := btree.Put([]byte(key), []byte(key))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	keys, err := btree.LessThanEq([]byte("010"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(keys) != 10 {
+		t.Fatalf("expected 10 keys, got %d", len(keys))
+	}
+}
