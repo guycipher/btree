@@ -14,7 +14,7 @@ https://pkg.go.dev/github.com/guycipher/btree
 
 ## Usage
 ### Importing
-```
+```go
 import "github.com/guycipher/btree"
 ```
 
@@ -22,41 +22,41 @@ import "github.com/guycipher/btree"
 
 You can use the ``Open`` method to open an existing btree or create a new one.
 You can specify the file, permission and T(degree)
-```
+```go
 // name of the file, flags, file mode, T(degree)
 bt, err := btree.Open("btree.db", os.O_CREATE|os.O_RDWR, 0644, 3)
 if err != nil {
-..
+   //..
 }
 ```
 
 ### Inserting a key-value pair
 
 You can insert a value into a key using the ``Put`` method.  Keys can store many values.
-```
+```go
 err := bt.Put([]byte("key"), []byte("value"))
 if err != nil {
-..
+   //..
 }
 ```
 
 ### Getting a value
 
 To get a value you can you the ``Get`` method.  The get method will return all the keys values.
-```
+```go
 values, err := bt.Get([]byte("key"))
 if err != nil {
-..
+   //..
 }
 ```
 
 ### Deleting a key
 
 To delete a key and all of it's values you can use the ``Delete`` method.
-```
+```go
 err := bt.Delete([]byte("key"))
 if err != nil {
-..
+    //..
 }
 ```
 
@@ -66,7 +66,7 @@ To remove a value from a key you can use the ``Remove`` method.
 ```
 err := bt.Remove([]byte("key"), []byte("value"))
 if err != nil {
-..
+   //..
 }
 ```
 
@@ -74,7 +74,7 @@ if err != nil {
 
 The iterator is used to iterate over values of a key
 
-```
+```go
 iterator := key.Iterator()
 
 for {
@@ -88,17 +88,17 @@ for {
 ```
 
 Result
-```
+```bash
 value1
 value2
 value3
 ```
 
 ### Range query
-```
+```go
 keys, err := bt.Range([]byte("key1"), []byte("key3"))
 if err != nil {
-..
+   //..
 }
 ```
 
@@ -106,10 +106,10 @@ if err != nil {
 
 You can close the BTree by calling the Close function.
 
-```
+```go
 err := bt.Close()
 if err != nil {
-..
+   ..
 }
 ```
 
