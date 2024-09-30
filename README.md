@@ -63,7 +63,7 @@ if err != nil {
 ### Removing a value within key
 
 To remove a value from a key you can use the ``Remove`` method.
-```
+```go
 err := bt.Remove([]byte("key"), []byte("value"))
 if err != nil {
    //..
