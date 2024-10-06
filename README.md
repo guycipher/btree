@@ -4,10 +4,19 @@ A fast, simple persistent BTree implementation in Go.
 https://pkg.go.dev/github.com/guycipher/btree
 
 ## Features
-- Easy to use API with Put, Get, Delete, Remove, Iterator, Range methods
+- Easy to use API with `Put`, `Get`, `Delete`, `Remove`, `Iterator`, `Range` methods
 - Disk based storage
 - Supports keys with multiple values
 - Supports large keys and values
+
+## Extra features
+- `NGet` get's keys not equal to the key
+- `NRange` get's keys not equal to provided range
+- `GreaterThan` get's keys greater than the provided key
+- `GreaterThanEq` get's keys greater than or equal to the provided key
+- `LessThan` get's keys less than the provided key
+- `LessThanEq` get's keys less than or equal to the provided key
+
 
 > [!WARNING]
 > Not thread safe.  You must handle concurrency control yourself.

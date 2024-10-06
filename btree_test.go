@@ -98,6 +98,40 @@ func TestBTree_Put(t *testing.T) {
 	}
 }
 
+func TestBTree_Put2(t *testing.T) {
+	defer os.Remove("btree.db")
+	defer os.Remove("btree.db.del")
+
+	btree, err := Open("btree.db", os.O_CREATE|os.O_RDWR, 0644, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer btree.Close()
+
+	for i := 0; i < 500; i++ {
+
+		err := btree.Put([]byte(strconv.Itoa(i)), []byte(strconv.Itoa(i)))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+	}
+
+	//btree.PrintTree()
+
+	//for i := 0; i < 500; i++ {
+	//	key, err := btree.Get([]byte(strconv.Itoa(i)))
+	//	if err != nil {
+	//		t.Fatal(err)
+	//	}
+	//
+	//	if key == nil {
+	//		t.Fatal("expected key to be not nil")
+	//	}
+	//}
+}
+
 func TestBTree_Delete(t *testing.T) {
 	defer os.Remove("btree.db")
 	defer os.Remove("btree.db.del")
