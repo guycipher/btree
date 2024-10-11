@@ -20,9 +20,17 @@ https://pkg.go.dev/github.com/guycipher/btree
 
 > [!NOTE]
 > 11th Gen Intel(R) Core(TM) i7-11700K @ 3.60GHz UBuntu with WDC WDS500G2B0A-00SM50(HDD) we insert 1 MILLION keys in `1m43` 1 minute and 43 seconds
-> Write speed is roughly `10,000` keys per second with this setup
-> This is at a page side of 1024 and a degree of 3
-> File size is 577.0 megabytes
+> Write speed is roughly `10,000` keys per `second` with this setup.
+> This is at a page size of `1024` and a degree of `3`.
+> File size is `577.0` megabytes
+
+> [!NOTE]
+> For above increasing the degree to 128 we get a result of `3m47` 3 minutes and 47 seconds.
+> Write speed is roughly `4,000` keys per `second` with this setup.
+
+> [!NOTE]
+> For above increasing the degree to 28 we get a result of `9s` 9 seconds.
+> Write speed is roughly `111,111` keys per `second` with this setup.
 
 > [!WARNING]
 > Not thread safe.  You must handle concurrency control yourself.
