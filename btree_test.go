@@ -111,7 +111,7 @@ func TestBTree_Put2(t *testing.T) {
 
 	defer btree.Close()
 
-	for i := 0; i < 500; i++ {
+	for i := 0; i < 1000; i++ {
 
 		err := btree.Put([]byte(strconv.Itoa(i)), []byte(strconv.Itoa(i)))
 		if err != nil {
@@ -120,18 +120,20 @@ func TestBTree_Put2(t *testing.T) {
 
 	}
 
-	//btree.PrintTree()
+	for i := 0; i < 500; i++ {
+		key, err := btree.Get([]byte(strconv.Itoa(i)))
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	//for i := 0; i < 500; i++ {
-	//	key, err := btree.Get([]byte(strconv.Itoa(i)))
-	//	if err != nil {
-	//		t.Fatal(err)
-	//	}
-	//
-	//	if key == nil {
-	//		t.Fatal("expected key to be not nil")
-	//	}
-	//}
+		if string(key.V[0]) != strconv.Itoa(i) {
+			t.Fatalf("expected value to be %d, got %s", i, key.V[0])
+		}
+
+		if key == nil {
+			t.Fatal("expected key to be not nil")
+		}
+	}
 }
 
 func TestBTree_Delete(t *testing.T) {
