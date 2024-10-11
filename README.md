@@ -18,6 +18,10 @@ https://pkg.go.dev/github.com/guycipher/btree
 - `LessThanEq` get's keys less than or equal to the provided key
 
 
+> [!NOTE]
+> 11th Gen Intel(R) Core(TM) i7-11700K @ 3.60GHz UBuntu with WDC WDS500G2B0A-00SM50(HDD) we insert 1 MILLION keys in `1m43` 1 minute and 43 seconds
+> Write speed is roughly `10,000` keys per second with this setup
+
 > [!WARNING]
 > Not thread safe.  You must handle concurrency control yourself.
 
