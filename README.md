@@ -32,7 +32,6 @@ import "github.com/guycipher/btree"
 You can use the ``Open`` method to open an existing btree or create a new one.
 You can specify the file name, flags, file mode, and the degree of the btree.
 ```go
-// name of the file, flags, file mode, T(degree)
 bt, err := btree.Open("btree.db", os.O_CREATE|os.O_RDWR, 0644, 3)
 if err != nil {
 ..
