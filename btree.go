@@ -84,8 +84,8 @@ func encodeNode(n *Node) ([]byte, error) {
 	return encoded, nil
 }
 
-// newBTreeNode creates a new BTree node
-func (b *BTree) newBTreeNode(leaf bool) (*Node, error) {
+// newNode creates a new BTree node
+func (b *BTree) newNode(leaf bool) (*Node, error) {
 	var err error
 
 	newNode := &Node{
@@ -194,7 +194,7 @@ func (b *BTree) splitRoot() error {
 	}
 
 	// Create new node (this will be the new "old root")
-	newOldRoot, err := b.newBTreeNode(oldRoot.Leaf)
+	newOldRoot, err := b.newNode(oldRoot.Leaf)
 	if err != nil {
 		return err
 	}
@@ -245,7 +245,7 @@ func (b *BTree) splitRoot() error {
 
 // splitChild splits a child node of x at index i
 func (b *BTree) splitChild(x *Node, i int, y *Node) error {
-	z, err := b.newBTreeNode(y.Leaf)
+	z, err := b.newNode(y.Leaf)
 	if err != nil {
 		return err
 	}

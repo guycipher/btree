@@ -84,12 +84,14 @@ func TestBTree_Put(t *testing.T) {
 
 	}
 
-	//btree.PrintTree()
-
 	for i := 0; i < 500; i++ {
 		key, err := btree.Get([]byte(strconv.Itoa(i)))
 		if err != nil {
 			t.Fatal(err)
+		}
+
+		if string(key.V[0]) != strconv.Itoa(i) {
+			t.Fatalf("expected value to be %d, got %s", i, key.V[0])
 		}
 
 		if key == nil {
