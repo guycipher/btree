@@ -1091,28 +1091,30 @@ func (b *BTree) nget(x *Node, k []byte) ([]*Key, error) {
 	keys := make([]*Key, 0)
 	if x != nil {
 		i := 0
-		for i < len(x.Keys) && notEq(x.Keys[i].K, k) {
-			if !x.Leaf {
-				childBytes, err := b.Pager.GetPage(x.Children[i])
-				if err != nil {
-					return nil, err
-				}
+		for i < len(x.Keys) {
+			if notEq(x.Keys[i].K, k) {
+				if !x.Leaf {
+					childBytes, err := b.Pager.GetPage(x.Children[i])
+					if err != nil {
+						return nil, err
+					}
 
-				child, err := decodeNode(childBytes)
-				if err != nil {
-					return nil, err
-				}
+					child, err := decodeNode(childBytes)
+					if err != nil {
+						return nil, err
+					}
 
-				childKeys, err := b.nget(child, k)
-				if err != nil {
-					return nil, err
+					childKeys, err := b.nget(child, k)
+					if err != nil {
+						return nil, err
+					}
+					keys = append(keys, childKeys...)
 				}
-				keys = append(keys, childKeys...)
+				keys = append(keys, x.Keys[i])
 			}
-			keys = append(keys, x.Keys[i])
 			i++
 		}
-		if !x.Leaf && i < len(x.Children) {
+		if !x.Leaf && i <= len(x.Children) {
 			childBytes, err := b.Pager.GetPage(x.Children[i])
 			if err != nil {
 				return nil, err
@@ -1131,7 +1133,6 @@ func (b *BTree) nget(x *Node, k []byte) ([]*Key, error) {
 		}
 	}
 	return keys, nil
-
 }
 
 // InOrderTraversal returns all keys in the BTree in order

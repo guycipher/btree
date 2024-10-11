@@ -263,6 +263,10 @@ func TestBTree_NGet(t *testing.T) {
 		return
 	}
 
+	if len(keys) != 99 {
+		t.Fatalf("expected 99 keys, got %d", len(keys))
+	}
+
 	for _, key := range keys {
 		if string(key.K) == "key_50" {
 			t.Fatalf("expected key not to be key_50")
