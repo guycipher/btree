@@ -156,8 +156,6 @@ func TestBTree_Delete(t *testing.T) {
 
 	}
 
-	//btree.PrintTree()
-
 	for i := 0; i < 500; i++ {
 		err := btree.Delete([]byte(strconv.Itoa(i)))
 		if err != nil {
