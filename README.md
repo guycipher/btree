@@ -24,14 +24,6 @@ https://pkg.go.dev/github.com/guycipher/btree
 > This is at a page size of `1024` and a degree of `3`.
 > File size is `577.0` megabytes
 
-> [!NOTE]
-> For above increasing the degree to 128 we get a result of `3m47` 3 minutes and 47 seconds.
-> Write speed is roughly `4,000` keys per `second` with this setup.
-
-> [!NOTE]
-> For above increasing the degree to 28 we get a result of `9s` 9 seconds.
-> Write speed is roughly `111,111` keys per `second` with this setup.
-
 > [!WARNING]
 > Not thread safe.  You must handle concurrency control yourself.
 
