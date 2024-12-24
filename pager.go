@@ -323,6 +323,10 @@ func (p *Pager) Close() error {
 	// close the exit channel
 	close(p.exit)
 	p.wg.Wait() // wait for the sync goroutine to finish
+
+	// sync one last time
+	p.file.Sync()
+
 	// write the deleted pages to the file
 	p.writeDelPages()
 	return p.file.Close()
