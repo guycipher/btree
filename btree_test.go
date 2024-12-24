@@ -425,7 +425,7 @@ func BenchmarkBTree_Put(b *testing.B) {
 	defer os.Remove("btree.db")
 	defer os.Remove("btree.db.del")
 
-	btree, err := Open("btree.db", os.O_CREATE|os.O_RDWR, 0644, 3)
+	btree, err := Open("btree.db", os.O_CREATE|os.O_RDWR, 0644, 32)
 	if err != nil {
 		b.Fatal(err)
 	}

@@ -38,6 +38,7 @@ import (
 	"github.com/hashicorp/go-msgpack/codec"
 	"os"
 	"strings"
+	"time"
 )
 
 // BTree is the main BTree struct
@@ -68,7 +69,7 @@ func Open(name string, flag, perm int, t int) (*BTree, error) {
 
 	}
 
-	pager, err := OpenPager(name, flag, os.FileMode(perm))
+	pager, err := OpenPager(name, flag, os.FileMode(perm), time.Millisecond*128)
 	if err != nil {
 		return nil, err
 	}
@@ -964,7 +965,6 @@ func (b *BTree) NRange(start, end []byte) ([]*Key, error) {
 	return b.nrange(root, start, end)
 }
 
-// nrange returns all keys not within the range [start, end]
 // nrange returns all keys not within the range [start, end]
 func (b *BTree) nrange(x *Node, start, end []byte) ([]*Key, error) {
 	keys := make([]*Key, 0)
