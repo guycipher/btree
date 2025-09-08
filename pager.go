@@ -43,8 +43,10 @@ import (
 	"time"
 )
 
-const PAGE_SIZE = 1024 // Page size
-const HEADER_SIZE = 16 // next (overflowed)
+const (
+	PAGE_SIZE   = 1024 // Page size
+	HEADER_SIZE = 16   // next (overflowed)
+)
 
 // Pager manages pages in a file
 type Pager struct {
@@ -84,7 +86,16 @@ func OpenPager(filename string, flag int, perm os.FileMode, syncInterval time.Du
 
 	count := stat.Size() / (PAGE_SIZE + HEADER_SIZE)
 
-	p := &Pager{file: file, deletedPages: deletedPages, deletedPagesFile: deletedPagesFile, deletedPagesLock: &sync.Mutex{}, count: count, syncInterval: syncInterval, wg: &sync.WaitGroup{}}
+	p := &Pager{
+		file:             file,
+		deletedPages:     deletedPages,
+		deletedPagesFile: deletedPagesFile,
+		deletedPagesLock: &sync.Mutex{},
+		count:            count,
+		syncInterval:     syncInterval,
+		exit:             make(chan struct{}),
+		wg:               &sync.WaitGroup{},
+	}
 	p.wg.Add(1)
 	go p.sync()
 
@@ -92,6 +103,8 @@ func OpenPager(filename string, flag int, perm os.FileMode, syncInterval time.Du
 }
 
 func (p *Pager) sync() {
+	defer p.wg.Done()
+
 	ticker := time.NewTicker(p.syncInterval)
 	for {
 		select {
@@ -106,7 +119,6 @@ func (p *Pager) sync() {
 
 // writeDelPages writes the deleted pages that are in-memory to the deleted pages file
 func (p *Pager) writeDelPages() error {
-
 	// Truncate the file
 	err := p.deletedPagesFile.Truncate(0)
 	if err != nil {
@@ -335,7 +347,6 @@ func (p *Pager) Close() error {
 // GetPage gets a page and returns the data
 // Will gather all the pages that are linked together
 func (p *Pager) GetPage(pageID int64) ([]byte, error) {
-
 	p.deletedPagesLock.Lock()
 	// Check if in deleted pages, if so return nil
 	if slices.Contains(p.deletedPages, pageID) {
@@ -369,7 +380,7 @@ func (p *Pager) GetPage(pageID int64) ([]byte, error) {
 
 	// remove the null bytes
 	header = bytes.Trim(header, "\x00")
-	//data = bytes.Trim(data, "\x00")
+	// data = bytes.Trim(data, "\x00")
 
 	// append the data to the result
 	result = append(result, data...)
@@ -382,7 +393,6 @@ func (p *Pager) GetPage(pageID int64) ([]byte, error) {
 
 	if nextPage == -1 {
 		return result, nil
-
 	}
 
 	for {
@@ -400,7 +410,7 @@ func (p *Pager) GetPage(pageID int64) ([]byte, error) {
 
 		// remove the null bytes
 		header = bytes.Trim(header, "\x00")
-		//data = bytes.Trim(data, "\x00")
+		// data = bytes.Trim(data, "\x00")
 
 		// append the data to the result
 		result = append(result, data...)
